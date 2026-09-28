@@ -504,7 +504,11 @@
         }
 
         .release-notes-dialog::backdrop { background: #0009; }
-        .release-notes-content { white-space: pre-wrap; color: #cbd5e1; }
+        .release-notes-content { white-space: normal; color: #cbd5e1; line-height: 1.6; }
+        .release-notes-content h1, .release-notes-content h2, .release-notes-content h3 { color: #f8fafc; margin: 1em 0 0.45em; }
+        .release-notes-content ul, .release-notes-content ol { padding-left: 1.5em; }
+        .release-notes-content p { white-space: pre-wrap; }
+        .release-notes-content a { color: #a5b4fc; }
 
         .flowchart-canvas-wrapper.is-panning {
             cursor: grabbing;
@@ -6287,8 +6291,46 @@ document.getElementById("checkForUpdatesButton").addEventListener("click", async
     else if (result.releaseNotes) latestReleaseNotes = result.releaseNotes;
 });
 
+function renderReleaseNotes(markup) {
+    const container = document.getElementById("releaseNotesContent");
+    const parser = new DOMParser();
+    const parsed = parser.parseFromString(String(markup || ""), "text/html");
+    const allowed = new Set(["H1", "H2", "H3", "P", "UL", "OL", "LI", "STRONG", "B", "EM", "I", "BR", "HR", "CODE", "PRE", "BLOCKQUOTE", "A"]);
+    const blocked = new Set(["SCRIPT", "STYLE", "IFRAME", "OBJECT", "EMBED", "SVG", "MATH"]);
+
+    function copySafe(source, parent) {
+        source.childNodes.forEach(child => {
+            if (child.nodeType === Node.TEXT_NODE) {
+                parent.appendChild(document.createTextNode(child.nodeValue || ""));
+                return;
+            }
+            if (child.nodeType !== Node.ELEMENT_NODE || blocked.has(child.tagName)) return;
+            if (!allowed.has(child.tagName)) { copySafe(child, parent); return; }
+            const safe = document.createElement(child.tagName.toLowerCase());
+            if (child.tagName === "A") {
+                try {
+                    const url = new URL(child.getAttribute("href") || "", window.location.href);
+                    if (url.protocol === "https:" || url.protocol === "http:") {
+                        safe.href = url.href;
+                        safe.target = "_blank";
+                        safe.rel = "noopener noreferrer";
+                    }
+                } catch (_) {}
+            }
+            parent.appendChild(safe);
+            copySafe(child, safe);
+        });
+    }
+
+    container.replaceChildren();
+    copySafe(parsed.body, container);
+    if (!container.textContent.trim()) {
+        container.textContent = "No release notes have been received yet. Check for updates to load the latest notes.";
+    }
+}
+
 document.getElementById("showReleaseNotesButton").addEventListener("click", () => {
-    document.getElementById("releaseNotesContent").textContent = latestReleaseNotes || "No release notes have been received yet. Check for updates to load the latest notes.";
+    renderReleaseNotes(latestReleaseNotes);
     document.getElementById("releaseNotesDialog").showModal();
 });
 document.getElementById("closeReleaseNotesButton").addEventListener("click", () => document.getElementById("releaseNotesDialog").close());
