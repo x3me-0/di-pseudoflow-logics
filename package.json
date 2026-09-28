@@ -20,6 +20,9 @@
     "electron": "^39.8.10",
     "electron-builder": "^26.15.3"
   },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  },
   "build": {
     "appId": "com.dipseudoflow.logics",
     "productName": "Di PseudoFlow Logics",
@@ -34,6 +37,13 @@
       "icon.ico",
       "logo.png"
     ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "x3me-0",
+        "repo": "di-pseudoflow-logics"
+      }
+    ],
     "win": {
       "target": "nsis",
       "icon": "icon.ico",
@@ -47,8 +57,5 @@
       "shortcutName": "Di PseudoFlow Logics",
       "artifactName": "Di PseudoFlow Logics Setup ${version}.${ext}"
     }
-  },
-  "dependencies": {
-    "electron-updater": "^6.8.9"
   }
 }
