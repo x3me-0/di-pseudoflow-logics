@@ -1,6 +1,6 @@
 {
   "name": "di-pseudoflow-logics",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Di PseudoFlow Logics - Lecturer Pseudocode Runner",
   "main": "main.js",
   "scripts": {
@@ -34,6 +34,7 @@
       "style.css",
       "interpreter.js",
       "main.js",
+      "preload.js",
       "icon.ico",
       "logo.png"
     ],
@@ -55,7 +56,7 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Di PseudoFlow Logics",
-      "artifactName": "Di PseudoFlow Logics Setup ${version}.${ext}"
+      "artifactName": "Di-PseudoFlow-Logics-Setup-${version}.${ext}"
     }
   }
 }
