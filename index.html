@@ -2,21 +2,941 @@
 <html lang="en">
 
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
     <title>Di PseudoFlow Logics</title>
 
-    <link rel="stylesheet" href="style.css">
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
+    <style>
+
+        /* =====================================================
+           PROJECT BAR
+        ===================================================== */
+
+        .project-workspace-bar {
+            background: #111827;
+            border: 1px solid #273449;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 18px;
+
+            display: grid;
+
+            grid-template-columns:
+                minmax(220px, 1fr)
+                minmax(300px, 2fr)
+                auto;
+
+            gap: 14px;
+            align-items: end;
+        }
+
+        .project-field {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .project-field label {
+            color: #94a3b8;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .project-field input,
+        .project-field textarea {
+            width: 100%;
+            box-sizing: border-box;
+
+            background: #0b1120;
+            color: #f8fafc;
+
+            border: 1px solid #334155;
+            border-radius: 8px;
+
+            padding: 10px 12px;
+
+            outline: none;
+            font-family: inherit;
+        }
+
+        .project-field textarea {
+            min-height: 42px;
+            resize: vertical;
+        }
+
+        .project-field input:focus,
+        .project-field textarea:focus {
+            border-color: #6366f1;
+        }
+
+        .project-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .project-action {
+            border: 1px solid #334155;
+            background: #1e293b;
+            color: #e2e8f0;
+
+            padding: 10px 13px;
+
+            border-radius: 8px;
+
+            cursor: pointer;
+
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .project-action:hover {
+            background: #273449;
+        }
+
+        .project-action.primary {
+            background: #4f46e5;
+            border-color: #6366f1;
+            color: white;
+        }
+
+        .project-action.primary:hover {
+            background: #4338ca;
+        }
+
+        .project-status {
+            grid-column: 1 / -1;
+
+            display: flex;
+            justify-content: space-between;
+
+            gap: 10px;
+
+            color: #64748b;
+            font-size: 12px;
+        }
+
+        .project-status strong {
+            color: #94a3b8;
+        }
+
+
+        /* =====================================================
+           WORKSPACE TABS
+        ===================================================== */
+
+        .workspace-tabs {
+            display: flex;
+            gap: 8px;
+
+            margin-bottom: 18px;
+
+            border-bottom: 1px solid #273449;
+            padding-bottom: 8px;
+        }
+
+        .workspace-tab {
+            border: 1px solid transparent;
+
+            background: transparent;
+
+            color: #94a3b8;
+
+            padding: 10px 18px;
+
+            border-radius: 8px;
+
+            cursor: pointer;
+
+            font-weight: 700;
+        }
+
+        .workspace-tab:hover {
+            background: #111827;
+            color: #e2e8f0;
+        }
+
+        .workspace-tab.active {
+            background: #1e293b;
+
+            border-color: #334155;
+
+            color: #ffffff;
+        }
+
+        .workspace-view {
+            display: none;
+        }
+
+        .workspace-view.active {
+            display: block;
+        }
+
+
+        /* =====================================================
+           PROJECT LIBRARY
+        ===================================================== */
+
+        .project-library-overlay {
+            position: fixed;
+            inset: 0;
+
+            background: rgba(2, 6, 23, 0.82);
+
+            display: none;
+
+            align-items: center;
+            justify-content: center;
+
+            z-index: 5000;
+
+            padding: 24px;
+        }
+
+        .project-library-overlay.visible {
+            display: flex;
+        }
+
+        .project-library {
+            width: min(900px, 100%);
+
+            max-height: 85vh;
+
+            overflow: hidden;
+
+            background: #111827;
+
+            border: 1px solid #334155;
+
+            border-radius: 16px;
+
+            box-shadow:
+                0 20px 70px
+                rgba(0, 0, 0, 0.45);
+
+            display: flex;
+
+            flex-direction: column;
+        }
+
+        .project-library-header {
+            display: flex;
+
+            align-items: center;
+            justify-content: space-between;
+
+            padding: 18px 20px;
+
+            border-bottom: 1px solid #273449;
+        }
+
+        .project-library-header h2 {
+            margin: 0;
+            color: #f8fafc;
+        }
+
+        .project-library-close {
+            border: none;
+            background: transparent;
+
+            color: #94a3b8;
+
+            font-size: 24px;
+
+            cursor: pointer;
+        }
+
+        .project-library-body {
+            padding: 20px;
+
+            overflow-y: auto;
+        }
+
+        .project-empty {
+            text-align: center;
+
+            padding: 45px 20px;
+
+            color: #64748b;
+        }
+
+        .project-card {
+            display: grid;
+
+            grid-template-columns: 1fr auto;
+
+            gap: 15px;
+
+            padding: 16px;
+
+            margin-bottom: 10px;
+
+            border: 1px solid #273449;
+
+            border-radius: 10px;
+
+            background: #0f172a;
+        }
+
+        .project-card h3 {
+            margin: 0 0 5px;
+            color: #f8fafc;
+        }
+
+        .project-card p {
+            margin: 0;
+
+            color: #64748b;
+
+            font-size: 12px;
+        }
+
+        .project-card-actions {
+            display: flex;
+
+            align-items: center;
+
+            gap: 8px;
+        }
+
+        .project-card-actions button {
+            border: 1px solid #334155;
+
+            background: #1e293b;
+
+            color: #e2e8f0;
+
+            padding: 8px 12px;
+
+            border-radius: 7px;
+
+            cursor: pointer;
+        }
+
+        .project-card-actions button.delete {
+            color: #fca5a5;
+        }
+
+
+        /* =====================================================
+           FLOWCHART
+        ===================================================== */
+
+        .flowchart-panel {
+            background: #111827;
+
+            border: 1px solid #273449;
+
+            border-radius: 12px;
+
+            overflow: hidden;
+        }
+
+        .flowchart-toolbar {
+            display: flex;
+
+            flex-wrap: wrap;
+
+            align-items: center;
+
+            gap: 7px;
+
+            padding: 12px;
+
+            border-bottom: 1px solid #273449;
+
+            background: #0f172a;
+        }
+
+        .flowchart-toolbar-group {
+            display: flex;
+
+            align-items: center;
+
+            gap: 5px;
+
+            padding-right: 10px;
+
+            margin-right: 5px;
+
+            border-right: 1px solid #273449;
+        }
+
+        .flowchart-toolbar-group:last-child {
+            border-right: none;
+        }
+
+        .flow-tool {
+            min-width: 42px;
+
+            min-height: 38px;
+
+            padding: 7px 10px;
+
+            border-radius: 7px;
+
+            border: 1px solid #334155;
+
+            background: #1e293b;
+
+            color: #cbd5e1;
+
+            cursor: pointer;
+
+            font-size: 12px;
+
+            font-weight: 700;
+        }
+
+        .flow-tool:hover {
+            background: #273449;
+        }
+
+        .flow-tool.active {
+            background: #4f46e5;
+
+            border-color: #6366f1;
+
+            color: white;
+        }
+
+        .flow-tool[data-flow-tool="connector"].active {
+            background: #b45309;
+            border-color: #f59e0b;
+        }
+
+        .flow-tool[data-flow-tool]:not([data-flow-tool="select"]):not([data-flow-tool="connector"]) {
+            cursor: grab;
+        }
+
+        .flow-tool[data-flow-tool]:not([data-flow-tool="select"]):not([data-flow-tool="connector"]):active {
+            cursor: grabbing;
+        }
+
+
+        /* =====================================================
+           FLOWCHART CANVAS
+        ===================================================== */
+
+        .flowchart-canvas-wrapper {
+            position: relative;
+
+            height: 650px;
+
+            overflow: hidden;
+
+            background-color: #0b1120;
+
+            background-image:
+                radial-gradient(
+                    circle,
+                    rgba(148, 163, 184, 0.22) 1px,
+                    transparent 1px
+                );
+
+            background-size: 20px 20px;
+
+            cursor: default;
+        }
+
+        .flowchart-action-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 7px;
+            padding: 9px 12px;
+            border-bottom: 1px solid #273449;
+            background: #111827;
+        }
+
+        .flowchart-action-row select {
+            min-height: 38px;
+            padding: 7px 9px;
+            border: 1px solid #334155;
+            border-radius: 7px;
+            background: #1e293b;
+            color: #e2e8f0;
+        }
+
+        .flowchart-selection-count {
+            margin-left: auto;
+            color: #94a3b8;
+            font-size: 12px;
+        }
+
+        .update-panel {
+            position: fixed;
+            z-index: 20;
+            right: 18px;
+            bottom: 18px;
+            width: min(360px, calc(100vw - 36px));
+            padding: 14px;
+            border: 1px solid #475569;
+            border-radius: 10px;
+            background: #111827;
+            color: #f8fafc;
+            box-shadow: 0 12px 36px #0008;
+        }
+
+        .update-panel progress { width: 100%; }
+
+        .release-notes-dialog {
+            width: min(620px, calc(100vw - 40px));
+            max-height: 75vh;
+            overflow: auto;
+            border: 1px solid #475569;
+            border-radius: 12px;
+            background: #111827;
+            color: #f8fafc;
+        }
+
+        .release-notes-dialog::backdrop { background: #0009; }
+        .release-notes-content { white-space: pre-wrap; color: #cbd5e1; }
+
+        .flowchart-canvas-wrapper.is-panning {
+            cursor: grabbing;
+            user-select: none;
+        }
+
+        .flowchart-canvas-wrapper.drag-over {
+            box-shadow:
+                inset 0 0 0 3px
+                rgba(99, 102, 241, 0.45);
+        }
+
+        .flowchart-canvas {
+            width: 100%;
+            height: 100%;
+
+            display: block;
+
+            user-select: none;
+
+            touch-action: none;
+        }
+
+        .flowchart-node {
+            cursor: grab;
+        }
+
+        .flowchart-node:active {
+            cursor: grabbing;
+        }
+
+        .flowchart-node.selected {
+            filter:
+                drop-shadow(
+                    0 0 6px
+                    rgba(99, 102, 241, 0.85)
+                );
+        }
+
+        .flowchart-node-shape {
+            fill: #172033;
+
+            stroke: #64748b;
+
+            stroke-width: 2;
+
+            vector-effect: non-scaling-stroke;
+        }
+
+        .flowchart-node.selected
+        .flowchart-node-shape {
+            stroke: #818cf8;
+
+            stroke-width: 3;
+        }
+
+        .flowchart-node-text {
+            fill: #f8fafc;
+
+            font-size: 14px;
+
+            font-family: Arial, sans-serif;
+
+            text-anchor: middle;
+
+            dominant-baseline: middle;
+
+            pointer-events: none;
+
+            user-select: none;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .connector-anchor {
+            fill: #f59e0b;
+            stroke: #fff7ed;
+            stroke-width: 2;
+            vector-effect: non-scaling-stroke;
+            cursor: crosshair;
+        }
+
+        .connector-anchor:hover,
+        .connector-anchor.source-anchor {
+            fill: #34d399;
+            r: 7px;
+        }
+
+        .flow-connector-route {
+            min-height: 38px;
+            padding: 7px 9px;
+            border: 1px solid #334155;
+            border-radius: 7px;
+            background: #1e293b;
+            color: #e2e8f0;
+            font: inherit;
+            font-size: 12px;
+        }
+
+        .flowchart-connector {
+            stroke: #94a3b8;
+
+            stroke-width: 2;
+
+            fill: none;
+
+            marker-end: url(#flowArrow);
+
+            pointer-events: stroke;
+
+            cursor: pointer;
+
+            vector-effect: non-scaling-stroke;
+        }
+
+        .flowchart-connector:hover {
+            stroke: #cbd5e1;
+
+            stroke-width: 3;
+        }
+
+        .flowchart-connector.selected {
+            stroke: #818cf8;
+
+            stroke-width: 3;
+        }
+
+        .flowchart-branch-label {
+            fill: #cbd5e1;
+
+            font-size: 12px;
+
+            font-weight: 700;
+
+            font-family: Arial, sans-serif;
+
+            pointer-events: none;
+
+            user-select: none;
+        }
+
+
+        /* =====================================================
+           RESIZE HANDLES
+        ===================================================== */
+
+        .flow-resize-handle {
+            fill: #818cf8;
+
+            stroke: #ffffff;
+
+            stroke-width: 1;
+
+            vector-effect: non-scaling-stroke;
+        }
+
+        .flow-resize-handle:hover {
+            fill: #a5b4fc;
+        }
+
+        .resize-n,
+        .resize-s {
+            cursor: ns-resize;
+        }
+
+        .resize-e,
+        .resize-w {
+            cursor: ew-resize;
+        }
+
+        .resize-ne,
+        .resize-sw {
+            cursor: nesw-resize;
+        }
+
+        .resize-nw,
+        .resize-se {
+            cursor: nwse-resize;
+        }
+
+
+        /* =====================================================
+           CONNECTOR SOURCE
+        ===================================================== */
+
+        .flowchart-node.connector-source
+        .flowchart-node-shape {
+            stroke: #f59e0b;
+
+            stroke-width: 4;
+        }
+
+
+        /* =====================================================
+           EMPTY MESSAGE
+        ===================================================== */
+
+        .flowchart-empty-message {
+            position: absolute;
+
+            top: 50%;
+
+            left: 50%;
+
+            transform: translate(-50%, -50%);
+
+            text-align: center;
+
+            color: #64748b;
+
+            pointer-events: none;
+        }
+
+        .flowchart-empty-message strong {
+            display: block;
+
+            color: #94a3b8;
+
+            font-size: 18px;
+
+            margin-bottom: 6px;
+        }
+
+
+        /* =====================================================
+           TEXT EDIT POPUP
+        ===================================================== */
+
+        .flow-text-editor {
+            position: absolute;
+
+            display: none;
+
+            z-index: 100;
+
+            width: 260px;
+
+            background: #111827;
+
+            border: 1px solid #475569;
+
+            border-radius: 10px;
+
+            padding: 12px;
+
+            box-shadow:
+                0 15px 45px
+                rgba(0, 0, 0, 0.45);
+        }
+
+        .flow-text-editor.visible {
+            display: block;
+        }
+
+        .flow-text-editor label {
+            display: block;
+
+            color: #94a3b8;
+
+            font-size: 11px;
+
+            font-weight: 700;
+
+            margin-bottom: 5px;
+        }
+
+        .flow-text-editor textarea {
+            width: 100%;
+
+            box-sizing: border-box;
+
+            min-height: 70px;
+
+            resize: vertical;
+
+            background: #0b1120;
+
+            border: 1px solid #334155;
+
+            border-radius: 7px;
+
+            color: #f8fafc;
+
+            padding: 8px;
+
+            font-family: inherit;
+
+            outline: none;
+        }
+
+        .flow-text-editor input {
+            width: 100%;
+
+            box-sizing: border-box;
+
+            background: #0b1120;
+
+            border: 1px solid #334155;
+
+            border-radius: 7px;
+
+            color: #f8fafc;
+
+            padding: 8px;
+
+            margin-top: 8px;
+
+            outline: none;
+        }
+
+        .flow-text-editor-actions {
+            display: flex;
+
+            justify-content: flex-end;
+
+            gap: 6px;
+
+            margin-top: 8px;
+        }
+
+        .flow-text-editor-actions button {
+            border: 1px solid #334155;
+
+            background: #1e293b;
+
+            color: #e2e8f0;
+
+            padding: 7px 10px;
+
+            border-radius: 6px;
+
+            cursor: pointer;
+        }
+
+        .flow-text-editor-actions button.primary {
+            background: #4f46e5;
+
+            border-color: #6366f1;
+
+            color: white;
+        }
+
+
+        /* =====================================================
+           INFO BAR
+        ===================================================== */
+
+        .flowchart-info-bar {
+            display: flex;
+
+            align-items: center;
+
+            justify-content: space-between;
+
+            flex-wrap: wrap;
+
+            gap: 10px;
+
+            padding: 10px 12px;
+
+            background: #0f172a;
+
+            border-top: 1px solid #273449;
+
+            color: #64748b;
+
+            font-size: 12px;
+        }
+
+        .flowchart-info-bar strong {
+            color: #94a3b8;
+        }
+
+
+        /* =====================================================
+           RESPONSIVE
+        ===================================================== */
+
+        @media (max-width: 1100px) {
+
+            .project-workspace-bar {
+                grid-template-columns: 1fr;
+            }
+
+            .project-status {
+                grid-column: auto;
+            }
+
+        }
+
+        @media (max-width: 700px) {
+
+            .project-card {
+                grid-template-columns: 1fr;
+            }
+
+            .project-card-actions {
+                justify-content: flex-start;
+            }
+
+            .flowchart-canvas-wrapper {
+                height: 500px;
+            }
+
+        }
+
+    </style>
+
 </head>
+
 
 <body>
 
+
 <!-- =========================================================
-     FIRST-LAUNCH WELCOME SCREEN
+     WELCOME SCREEN
 ========================================================= -->
 
-<div id="welcomeScreen" class="welcome-screen">
+<div
+    id="welcomeScreen"
+    class="welcome-screen"
+>
 
     <div class="welcome-card">
 
@@ -29,7 +949,6 @@
             >
 
         </div>
-
 
         <div class="welcome-content">
 
@@ -50,7 +969,6 @@
                 interactive environment designed for CPRG1201.
             </p>
 
-
             <div class="welcome-features">
 
                 <span>Write</span>
@@ -63,7 +981,6 @@
 
             </div>
 
-
             <button
                 id="getStartedButton"
                 class="welcome-button"
@@ -71,7 +988,6 @@
             >
                 GET STARTED
             </button>
-
 
             <label class="welcome-checkbox">
 
@@ -96,18 +1012,24 @@
 
 <div class="app">
 
-    <!-- =========================
+
+    <!-- =====================================================
          HEADER
-    ========================== -->
+    ====================================================== -->
 
     <header class="app-header">
 
         <div>
-            <h1>Di PseudoFlow Logics</h1>
+
+            <h1>
+                Di PseudoFlow Logics
+            </h1>
 
             <p>
-                Write, check and run your lecturer-based pseudocode
+                Write, check and build your lecturer-based
+                pseudocode and flowcharts
             </p>
+
         </div>
 
         <div class="header-badge">
@@ -117,272 +1039,702 @@
     </header>
 
 
-    <!-- =========================
-         MAIN WORKSPACE
-    ========================== -->
 
-    <main class="workspace">
+    <!-- =====================================================
+         PROJECT BAR
+    ====================================================== -->
 
+    <section class="project-workspace-bar">
 
-        <!-- =========================
-             CODE PANEL
-        ========================== -->
+        <div class="project-field">
 
-        <section class="panel editor-panel">
+            <label for="projectTitle">
+                Project Title
+            </label>
 
-            <div class="panel-header">
-
-                <div class="panel-title">
-
-                    <span class="panel-icon">⌘</span>
-
-                    <div>
-                        <h2>Pseudocode</h2>
-
-                        <span id="lineStatus">
-                            Lines: 1
-                        </span>
-                    </div>
-
-                </div>
-
-
-                <div class="editor-status">
-                    <span class="status-dot"></span>
-                    Ready
-                </div>
-
-            </div>
-
-
-            <!-- CODE EDITOR -->
-
-            <div class="editor-wrapper">
-
-                <div
-                    id="lineNumbers"
-                    class="line-numbers"
-                    aria-hidden="true"
-                >
-                    1
-                </div>
-
-
-                <div class="code-area">
-
-                    <!-- Syntax highlighting layer -->
-
-                    <pre
-                        id="highlightLayer"
-                        class="highlight-layer"
-                        aria-hidden="true"
-                    ></pre>
-
-
-                    <!-- Actual editor -->
-
-                    <textarea
-                        id="pseudocode"
-                        spellcheck="false"
-                        autocomplete="off"
-                        autocorrect="off"
-                        autocapitalize="off"
-                        placeholder="Write your pseudocode here..."
-                    ></textarea>
-
-                </div>
-
-            </div>
-
-
-            <!-- EDITOR CONTROLS -->
-
-            <div class="button-row">
-
-                <button
-                    class="btn btn-run"
-                    onclick="runProgram()"
-                >
-                    ▶ Run
-                </button>
-
-
-                <button
-                    class="btn btn-step"
-                    onclick="runStepByStep()"
-                >
-                    ▶ Step-by-Step
-                </button>
-
-
-                <button
-                    class="btn btn-check"
-                    onclick="checkSyntax()"
-                >
-                    ✓ Check Syntax
-                </button>
-
-
-                <button
-                    class="btn btn-format"
-                    onclick="formatPseudocode()"
-                >
-                    ⇥ Format Code
-                </button>
-
-
-                <button
-                    class="btn btn-secondary"
-                    onclick="loadExample()"
-                >
-                    Load Example
-                </button>
-
-
-                <button
-                    class="btn btn-danger"
-                    onclick="clearProgram()"
-                >
-                    Clear
-                </button>
-
-            </div>
-
-
-            <div class="editor-help">
-
-                <span>
-                    <kbd>Tab</kbd> 4 spaces
-                </span>
-
-                <span>
-                    <kbd>Shift</kbd> + <kbd>Tab</kbd> Outdent
-                </span>
-
-                <span>
-                    <kbd>Enter</kbd> Auto-indent
-                </span>
-
-            </div>
-
-        </section>
-
-
-
-        <!-- =========================
-             OUTPUT PANEL
-        ========================== -->
-
-        <section class="panel output-panel">
-
-            <div class="panel-header">
-
-                <div class="panel-title">
-
-                    <span class="panel-icon output-icon">
-                        ›_
-                    </span>
-
-                    <div>
-                        <h2>Output</h2>
-
-                        <span>
-                            Program results
-                        </span>
-                    </div>
-
-                </div>
-
-
-                <button
-                    class="clear-output"
-                    onclick="clearOutput()"
-                >
-                    Clear Output
-                </button>
-
-            </div>
-
-
-            <!-- OUTPUT -->
-
-            <div
-                id="output"
-                class="output-console"
-            ></div>
-
-
-            <!-- =========================
-                 INPUT
-            ========================== -->
-
-            <div
-                id="inputArea"
-                class="input-section"
+            <input
+                type="text"
+                id="projectTitle"
+                placeholder="Enter project title..."
+                autocomplete="off"
             >
 
-                <div class="input-title">
+        </div>
 
-                    <span class="input-icon">
-                        ?
-                    </span>
+        <div class="project-field">
 
-                    <div>
+            <label for="projectQuestion">
+                Assignment / Question
+            </label>
 
-                        <strong>Program Input</strong>
+            <textarea
+                id="projectQuestion"
+                placeholder="Enter the question or assignment given to you..."
+            ></textarea>
 
-                        <p id="inputInformation">
-                            Enter a value:
-                        </p>
+        </div>
+
+        <div class="project-actions">
+
+            <button
+                type="button"
+                class="project-action"
+                id="newProjectButton"
+            >
+                + New
+            </button>
+
+            <button
+                type="button"
+                class="project-action primary"
+                id="saveProjectButton"
+            >
+                Save
+            </button>
+
+            <button type="button" class="project-action" id="saveProjectAsButton">Save As</button>
+
+            <button
+                type="button"
+                class="project-action"
+                id="openProjectButton"
+            >
+                Open
+            </button>
+
+            <button
+                type="button"
+                class="project-action"
+                id="projectLibraryButton"
+            >
+                Projects
+            </button>
+
+        </div>
+
+        <div class="project-status">
+
+            <span>
+
+                <strong>
+                    Project:
+                </strong>
+
+                <span id="projectStatusText">
+                    New Project
+                </span>
+
+            </span>
+
+            <span id="projectModifiedText">
+                Not saved
+            </span>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =====================================================
+         TABS
+    ====================================================== -->
+
+    <nav class="workspace-tabs">
+
+        <button
+            type="button"
+            class="workspace-tab active"
+            data-workspace="editorWorkspace"
+        >
+            Pseudocode
+        </button>
+
+        <button
+            type="button"
+            class="workspace-tab"
+            data-workspace="flowchartWorkspace"
+        >
+            Manual Flowchart
+        </button>
+
+    </nav>
+
+
+
+    <!-- =====================================================
+         PSEUDOCODE WORKSPACE
+    ====================================================== -->
+
+    <section
+        id="editorWorkspace"
+        class="workspace-view active"
+    >
+
+        <main class="workspace">
+
+            <section class="panel editor-panel">
+
+                <div class="panel-header">
+
+                    <div class="panel-title">
+
+                        <span class="panel-icon">
+                            ⌘
+                        </span>
+
+                        <div>
+
+                            <h2>
+                                Pseudocode
+                            </h2>
+
+                            <span id="lineStatus">
+                                Lines: 1
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                    <div class="editor-status">
+
+                        <span class="status-dot"></span>
+
+                        Ready
 
                     </div>
 
                 </div>
 
+                <div class="editor-wrapper">
 
-                <div class="input-row">
-
-                    <input
-                        type="text"
-                        id="userInput"
-                        placeholder="Enter value"
-                        autocomplete="off"
+                    <div
+                        id="lineNumbers"
+                        class="line-numbers"
+                        aria-hidden="true"
                     >
+                        1
+                    </div>
 
+                    <div class="code-area">
+
+                        <pre
+                            id="highlightLayer"
+                            class="highlight-layer"
+                            aria-hidden="true"
+                        ></pre>
+
+                        <textarea
+                            id="pseudocode"
+                            spellcheck="false"
+                            autocomplete="off"
+                            autocorrect="off"
+                            autocapitalize="off"
+                            placeholder="Write your pseudocode here..."
+                        ></textarea>
+
+                    </div>
+
+                </div>
+
+                <div class="button-row">
 
                     <button
-                        onclick="submitInput()"
+                        class="btn btn-run"
+                        onclick="runProgram()"
                     >
-                        Enter
+                        ▶ Run
+                    </button>
+
+                    <button
+                        class="btn btn-step"
+                        onclick="runStepByStep()"
+                    >
+                        ▶ Step-by-Step
+                    </button>
+
+                    <button
+                        class="btn btn-check"
+                        onclick="checkSyntax()"
+                    >
+                        ✓ Check Syntax
+                    </button>
+
+                    <button
+                        class="btn btn-format"
+                        onclick="formatPseudocode()"
+                    >
+                        ⇥ Format Code
+                    </button>
+
+                    <button
+                        class="btn btn-secondary"
+                        onclick="loadExample()"
+                    >
+                        Load Example
+                    </button>
+
+                    <button
+                        class="btn btn-danger"
+                        onclick="clearProgram()"
+                    >
+                        Clear
+                    </button>
+
+                </div>
+
+                <div class="editor-help">
+
+                    <span>
+                        <kbd>Tab</kbd> 4 spaces
+                    </span>
+
+                    <span>
+                        <kbd>Shift</kbd> +
+                        <kbd>Tab</kbd> Outdent
+                    </span>
+
+                    <span>
+                        <kbd>Enter</kbd> Auto-indent
+                    </span>
+
+                </div>
+
+            </section>
+
+
+
+            <section class="panel output-panel">
+
+                <div class="panel-header">
+
+                    <div class="panel-title">
+
+                        <span class="panel-icon output-icon">
+                            ›_
+                        </span>
+
+                        <div>
+
+                            <h2>
+                                Output
+                            </h2>
+
+                            <span>
+                                Program results
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                    <button
+                        class="clear-output"
+                        onclick="clearOutput()"
+                    >
+                        Clear Output
+                    </button>
+
+                </div>
+
+                <div
+                    id="output"
+                    class="output-console"
+                ></div>
+
+                <div
+                    id="inputArea"
+                    class="input-section"
+                >
+
+                    <div class="input-title">
+
+                        <span class="input-icon">
+                            ?
+                        </span>
+
+                        <div>
+
+                            <strong>
+                                Program Input
+                            </strong>
+
+                            <p id="inputInformation">
+                                Enter a value:
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    <div class="input-row">
+
+                        <input
+                            type="text"
+                            id="userInput"
+                            placeholder="Enter value"
+                            autocomplete="off"
+                        >
+
+                        <button
+                            onclick="submitInput()"
+                        >
+                            Enter
+                        </button>
+
+                    </div>
+
+                </div>
+
+                <div class="output-footer">
+
+                    <span>
+                        Di PseudoFlow Logics
+                    </span>
+
+                    <span>
+                        Interpreter
+                    </span>
+
+                </div>
+
+            </section>
+
+        </main>
+
+    </section>
+
+
+
+    <!-- =====================================================
+         FLOWCHART WORKSPACE
+    ====================================================== -->
+
+    <section
+        id="flowchartWorkspace"
+        class="workspace-view"
+    >
+
+        <div class="flowchart-panel">
+
+            <div class="flowchart-toolbar">
+
+                <div class="flowchart-toolbar-group">
+
+                    <button
+                        type="button"
+                        class="flow-tool active"
+                        data-flow-tool="select"
+                        title="Select and move shapes"
+                    >
+                        Select
+                    </button>
+
+                    <button
+                        type="button"
+                        class="flow-tool"
+                        data-flow-tool="start-end"
+                        draggable="true"
+                        title="Drag onto canvas or click then place"
+                    >
+                        Start/End
+                    </button>
+
+                    <button
+                        type="button"
+                        class="flow-tool"
+                        data-flow-tool="process"
+                        draggable="true"
+                        title="Drag onto canvas or click then place"
+                    >
+                        Process
+                    </button>
+
+                    <button
+                        type="button"
+                        class="flow-tool"
+                        data-flow-tool="input-output"
+                        draggable="true"
+                        title="Drag onto canvas or click then place"
+                    >
+                        Input/Output
+                    </button>
+
+                    <button
+                        type="button"
+                        class="flow-tool"
+                        data-flow-tool="decision"
+                        draggable="true"
+                        title="Drag onto canvas or click then place"
+                    >
+                        Decision
+                    </button>
+
+                    <button type="button" class="flow-tool" data-flow-tool="connection" draggable="true" title="Place a circle connection point">
+                        Circle / Connection
+                    </button>
+
+                </div>
+
+                <div class="flowchart-toolbar-group">
+
+                    <button
+                        type="button"
+                        class="flow-tool"
+                        data-flow-tool="connector"
+                        title="Choose a source point, then a destination point"
+                    >
+                        Connector
+                    </button>
+
+                    <label class="sr-only" for="flowConnectorRoute">Connector line style</label>
+                    <select id="flowConnectorRoute" class="flow-connector-route" title="Choose the line style for new connectors">
+                        <option value="straight">Straight line</option>
+                        <option value="orthogonal">Orthogonal line</option>
+                    </select>
+
+                    <button
+                        type="button"
+                        class="flow-tool"
+                        data-flow-tool="text"
+                        draggable="true"
+                        title="Drag onto canvas or click then place"
+                    >
+                        Text
+                    </button>
+
+                    <button
+                        type="button"
+                        class="flow-tool"
+                        id="deleteFlowSelection"
+                    >
+                        Delete
+                    </button>
+
+                </div>
+
+                <div class="flowchart-toolbar-group">
+
+                    <button
+                        type="button"
+                        class="flow-tool"
+                        id="flowZoomOut"
+                    >
+                        −
+                    </button>
+
+                    <button
+                        type="button"
+                        class="flow-tool"
+                        id="flowZoomReset"
+                    >
+                        100%
+                    </button>
+
+                    <button
+                        type="button"
+                        class="flow-tool"
+                        id="flowZoomIn"
+                    >
+                        +
+                    </button>
+
+                    <button
+                        type="button"
+                        class="flow-tool"
+                        id="flowFit"
+                    >
+                        Fit
+                    </button>
+
+                    <button
+                        type="button"
+                        class="flow-tool"
+                        id="flowReset"
+                    >
+                        Reset
+                    </button>
+
+                </div>
+
+                <div class="flowchart-toolbar-group">
+
+                    <button
+                        type="button"
+                        class="flow-tool active"
+                        id="flowGridToggle"
+                    >
+                        Grid ✓
+                    </button>
+
+                    <button
+                        type="button"
+                        class="flow-tool active"
+                        id="flowSnapToggle"
+                    >
+                        Snap ✓
                     </button>
 
                 </div>
 
             </div>
 
+            <div class="flowchart-action-row">
+                <button type="button" class="flow-tool" id="flowUndoButton" title="Undo (Ctrl+Z)">Undo</button>
+                <button type="button" class="flow-tool" id="flowRedoButton" title="Redo (Ctrl+Y)">Redo</button>
+                <button type="button" class="flow-tool" id="flowDuplicateButton" title="Duplicate selected shapes (Ctrl+D)">Duplicate</button>
+                <label class="sr-only" for="flowAlignMode">Alignment</label>
+                <select id="flowAlignMode">
+                    <option value="left">Align left</option>
+                    <option value="center-x">Align horizontal centers</option>
+                    <option value="right">Align right</option>
+                    <option value="top">Align top</option>
+                    <option value="center-y">Align vertical centers</option>
+                    <option value="bottom">Align bottom</option>
+                </select>
+                <button type="button" class="flow-tool" id="flowAlignButton">Align</button>
+                <button type="button" class="flow-tool" id="flowExportPngButton">Export PNG</button>
+                <button type="button" class="flow-tool" id="flowExportPdfButton">Export PDF</button>
+                <span class="flowchart-selection-count" id="flowSelectionCount">0 selected</span>
+            </div>
 
-            <!-- OUTPUT FOOTER -->
+            <div
+                id="flowchartCanvasWrapper"
+                class="flowchart-canvas-wrapper"
+            >
 
-            <div class="output-footer">
+                <div
+                    id="flowchartEmptyMessage"
+                    class="flowchart-empty-message"
+                >
+
+                    <strong>
+                        Build Your Flowchart
+                    </strong>
+
+                    <span>
+                        Drag a shape onto the workspace,
+                        or select a shape and click.
+                    </span>
+
+                </div>
+
+
+                <svg
+                    id="flowchartCanvas"
+                    class="flowchart-canvas"
+                    xmlns="http://www.w3.org/2000/svg"
+                >
+
+                    <defs>
+
+                        <marker
+                            id="flowArrow"
+                            markerWidth="10"
+                            markerHeight="10"
+                            refX="9"
+                            refY="3"
+                            orient="auto"
+                            markerUnits="strokeWidth"
+                        >
+
+                            <path
+                                d="M0,0 L0,6 L9,3 z"
+                                fill="#94a3b8"
+                            />
+
+                        </marker>
+
+                    </defs>
+
+
+                    <g id="flowchartViewport">
+
+                        <g id="flowchartConnectors"></g>
+
+                        <g id="flowchartNodes"></g>
+
+                    </g>
+
+                </svg>
+
+
+                <div
+                    id="flowTextEditor"
+                    class="flow-text-editor"
+                >
+
+                    <label>
+                        Shape Text
+                    </label>
+
+                    <textarea
+                        id="flowTextInput"
+                        placeholder="Enter text..."
+                    ></textarea>
+
+                    <label>
+                        Text Size
+                    </label>
+
+                    <input
+                        type="number"
+                        id="flowFontSizeInput"
+                        min="8"
+                        max="48"
+                        value="14"
+                    >
+
+                    <div class="flow-text-editor-actions">
+
+                        <button
+                            type="button"
+                            id="flowTextCancel"
+                        >
+                            Cancel
+                        </button>
+
+                        <button
+                            type="button"
+                            id="flowTextSave"
+                            class="primary"
+                        >
+                            Apply
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="flowchart-info-bar">
 
                 <span>
-                    Di PseudoFlow Logics
+                    <strong>
+                        Manual Builder
+                    </strong>
+                    — Drag, move, resize and connect shapes.
+                </span>
+
+                <span id="flowchartZoomText">
+                    Zoom: 100%
                 </span>
 
                 <span>
-                    Interpreter
+                    Decision branches use
+                    <strong>TRUE / FALSE</strong>
                 </span>
 
             </div>
 
-        </section>
+        </div>
 
-    </main>
+    </section>
 
 
-    <!-- =========================
-         FOOTER
-    ========================== -->
 
     <footer class="app-footer">
 
@@ -391,74 +1743,4580 @@
         </span>
 
         <span>
-            Created by Horace Williams • Test Version 1.0
+            Created by Horace Williams • Version <strong id="appVersion">…</strong>
         </span>
+        <div class="project-actions">
+            <button type="button" class="project-action" id="checkForUpdatesButton">Check for Updates</button>
+            <button type="button" class="project-action" id="showReleaseNotesButton">Release Notes</button>
+        </div>
 
     </footer>
 
 </div>
 
 
+
+<!-- =========================================================
+     PROJECT LIBRARY
+========================================================= -->
+
+<div
+    id="projectLibraryOverlay"
+    class="project-library-overlay"
+>
+
+    <div class="project-library">
+
+        <div class="project-library-header">
+
+            <h2>
+                Project Library
+            </h2>
+
+            <button
+                type="button"
+                class="project-library-close"
+                id="closeProjectLibrary"
+            >
+                ×
+            </button>
+
+        </div>
+
+        <div
+            id="projectLibraryBody"
+            class="project-library-body"
+        >
+
+            <div class="project-empty">
+                Loading projects...
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div class="update-panel" id="updatePanel" hidden aria-live="polite">
+    <strong id="updateStatusTitle">Updates</strong>
+    <p id="updateStatusText"></p>
+    <progress id="updateProgress" max="100" value="0" hidden></progress>
+    <button type="button" class="project-action" id="closeUpdatePanel">Dismiss</button>
+</div>
+
+<dialog class="release-notes-dialog" id="releaseNotesDialog">
+    <h2>Release Notes</h2>
+    <div class="release-notes-content" id="releaseNotesContent"></div>
+    <button type="button" class="project-action" id="closeReleaseNotesButton">Close</button>
+</dialog>
+
 <script src="interpreter.js"></script>
 
 
-<!-- =========================================================
-     WELCOME SCREEN LOGIC
-========================================================= -->
-
 <script>
 
-    const welcomeScreen = document.getElementById("welcomeScreen");
-    const getStartedButton = document.getElementById("getStartedButton");
-    const dontShowWelcome = document.getElementById("dontShowWelcome");
+/* =========================================================
+   PROJECT STATE
+========================================================= */
 
-    const WELCOME_STORAGE_KEY = "diPseudoFlowWelcomeShown";
+let currentProject = {
+
+    id: null,
+
+    title: "",
+
+    question: "",
+
+    pseudocode: "",
+
+    flowchart: {
+
+        mode: "manual",
+
+        nodes: [],
+
+        connectors: [],
+
+        zoom: 1,
+
+        panX: 0,
+
+        panY: 0
+    },
+
+    created: null,
+
+    modified: null
+};
 
 
-    function closeWelcomeScreen() {
+let projectDirty = false;
 
-        if (dontShowWelcome.checked) {
 
-            localStorage.setItem(
-                WELCOME_STORAGE_KEY,
-                "true"
-            );
+/* =========================================================
+   ELEMENTS
+========================================================= */
 
-        }
+const projectTitle =
+    document.getElementById("projectTitle");
 
-        welcomeScreen.classList.add("welcome-hidden");
+const projectQuestion =
+    document.getElementById("projectQuestion");
 
-        setTimeout(() => {
+const projectStatusText =
+    document.getElementById("projectStatusText");
 
-            welcomeScreen.style.display = "none";
+const projectModifiedText =
+    document.getElementById("projectModifiedText");
 
-        }, 400);
+const projectLibraryOverlay =
+    document.getElementById("projectLibraryOverlay");
 
+const projectLibraryBody =
+    document.getElementById("projectLibraryBody");
+
+const flowchartCanvas =
+    document.getElementById("flowchartCanvas");
+
+const flowchartCanvasWrapper =
+    document.getElementById("flowchartCanvasWrapper");
+
+const flowchartViewport =
+    document.getElementById("flowchartViewport");
+
+const flowchartNodes =
+    document.getElementById("flowchartNodes");
+
+const flowchartConnectors =
+    document.getElementById("flowchartConnectors");
+
+const flowchartEmptyMessage =
+    document.getElementById("flowchartEmptyMessage");
+
+const flowchartZoomText =
+    document.getElementById("flowchartZoomText");
+
+const flowTextEditor =
+    document.getElementById("flowTextEditor");
+
+const flowTextInput =
+    document.getElementById("flowTextInput");
+
+const flowFontSizeInput =
+    document.getElementById("flowFontSizeInput");
+
+
+/* =========================================================
+   FLOWCHART STATE
+========================================================= */
+
+const SVG_NS =
+    "http://www.w3.org/2000/svg";
+
+let selectedFlowTool = "select";
+
+let selectedFlowNode = null;
+let selectedFlowNodes = new Set();
+let selectedFlowConnector = null;
+let copiedFlowNodes = [];
+let undoHistory = [];
+let redoHistory = [];
+let historySnapshot = "";
+const FLOW_HISTORY_LIMIT = 60;
+
+let connectorSourceNode = null;
+let connectorSourceSide = null;
+
+let editingNodeId = null;
+
+let flowZoom = 1;
+let flowPanX = 0;
+let flowPanY = 0;
+let spacePanHeld = false;
+let activePan = null;
+
+let flowGridEnabled = true;
+
+let flowSnapEnabled = true;
+
+
+/*
+   Important:
+   We no longer rebuild the entire SVG during movement.
+*/
+
+let activeDrag = null;
+
+let activeResize = null;
+
+
+/* =========================================================
+   PROJECT STRUCTURE
+========================================================= */
+
+function ensureFlowchartStructure() {
+
+    if (!currentProject.flowchart) {
+
+        currentProject.flowchart = {
+
+            mode: "manual",
+
+            nodes: [],
+
+            connectors: [],
+
+            zoom: 1,
+
+            panX: 0,
+
+            panY: 0
+        };
     }
 
 
-    getStartedButton.addEventListener(
+    if (
+        !Array.isArray(
+            currentProject.flowchart.nodes
+        )
+    ) {
+
+        currentProject.flowchart.nodes = [];
+    }
+
+
+    if (
+        !Array.isArray(
+            currentProject.flowchart.connectors
+        )
+    ) {
+
+        currentProject.flowchart.connectors = [];
+    }
+
+    if (!Number.isFinite(Number(currentProject.flowchart.zoom))) currentProject.flowchart.zoom = 1;
+    if (!Number.isFinite(Number(currentProject.flowchart.panX))) currentProject.flowchart.panX = 0;
+    if (!Number.isFinite(Number(currentProject.flowchart.panY))) currentProject.flowchart.panY = 0;
+}
+
+
+function createNewProjectObject() {
+
+    const now =
+        new Date().toISOString();
+
+
+    return {
+
+        id: null,
+
+        title: "",
+
+        question: "",
+
+        pseudocode:
+            document.getElementById(
+                "pseudocode"
+            )?.value || "",
+
+        flowchart: {
+
+            mode: "manual",
+
+            nodes: [],
+
+            connectors: [],
+
+            zoom: 1,
+
+            panX: 0,
+
+            panY: 0
+        },
+
+        created: now,
+
+        modified: null
+    };
+}
+
+
+function syncProjectFieldsToState() {
+    if (!currentProject) return;
+    currentProject.title = projectTitle.value.trim();
+    currentProject.question = projectQuestion.value.trim();
+    currentProject.pseudocode = document.getElementById("pseudocode")?.value || "";
+}
+
+function resetProjectHistory() {
+    undoHistory = [];
+    redoHistory = [];
+    syncProjectFieldsToState();
+    historySnapshot = JSON.stringify(currentProject);
+    updateHistoryButtons();
+}
+
+function rememberProjectChange() {
+    syncProjectFieldsToState();
+    const next = JSON.stringify(currentProject);
+    if (!historySnapshot) { historySnapshot = next; return; }
+    if (next === historySnapshot) return;
+    undoHistory.push(JSON.parse(historySnapshot));
+    if (undoHistory.length > FLOW_HISTORY_LIMIT) undoHistory.shift();
+    historySnapshot = next;
+    redoHistory = [];
+    updateHistoryButtons();
+}
+
+function updateHistoryButtons() {
+    const undo = document.getElementById("flowUndoButton");
+    const redo = document.getElementById("flowRedoButton");
+    if (undo) undo.disabled = undoHistory.length === 0;
+    if (redo) redo.disabled = redoHistory.length === 0;
+}
+
+function markProjectDirty() {
+    projectDirty = true;
+    rememberProjectChange();
+    projectModifiedText.textContent = "Unsaved changes";
+    updateProjectStatus();
+}
+
+
+function updateProjectStatus() {
+
+    projectStatusText.textContent =
+        projectTitle.value.trim()
+        ||
+        "New Project";
+}
+
+
+function updateProjectFieldsFromState({ resetHistory = true } = {}) {
+
+    ensureFlowchartStructure();
+
+
+    projectTitle.value =
+        currentProject.title || "";
+
+
+    projectQuestion.value =
+        currentProject.question || "";
+
+
+    const pseudocode =
+        document.getElementById(
+            "pseudocode"
+        );
+
+
+    if (pseudocode) {
+
+        pseudocode.value =
+            currentProject.pseudocode
+            || "";
+
+
+        if (
+            typeof updateEditorVisuals
+            === "function"
+        ) {
+
+            updateEditorVisuals();
+        }
+    }
+
+
+    flowZoom = Number(currentProject.flowchart.zoom) || 1;
+    flowPanX = Number(currentProject.flowchart.panX) || 0;
+    flowPanY = Number(currentProject.flowchart.panY) || 0;
+
+
+    selectedFlowNode = null;
+    selectedFlowNodes = new Set();
+
+    selectedFlowConnector = null;
+
+    connectorSourceNode = null;
+
+
+    closeFlowTextEditor();
+
+    renderFlowchart();
+
+    updateFlowchartTransform();
+
+    updateProjectStatus();
+    selectedFlowNodes = new Set();
+    if (resetHistory) resetProjectHistory();
+}
+
+
+/* =========================================================
+   NEW PROJECT
+========================================================= */
+
+function newProject() {
+
+    if (
+        projectDirty
+        &&
+        !confirm(
+            "You have unsaved changes. Create a new project anyway?"
+        )
+    ) {
+
+        return;
+    }
+
+
+    currentProject =
+        createNewProjectObject();
+
+
+    projectDirty = false;
+
+    selectedFlowNode = null;
+    selectedFlowNodes = new Set();
+
+    selectedFlowConnector = null;
+
+    connectorSourceNode = null;
+
+
+    updateProjectFieldsFromState();
+
+
+    projectModifiedText.textContent =
+        "New project";
+
+
+    if (
+        typeof clearOutput
+        === "function"
+    ) {
+
+        clearOutput();
+    }
+
+
+    const pseudocode =
+        document.getElementById(
+            "pseudocode"
+        );
+
+
+    if (pseudocode) {
+
+        pseudocode.focus();
+    }
+}
+
+
+/* =========================================================
+   SAVE PROJECT
+========================================================= */
+
+async function saveCurrentProject() {
+
+    ensureFlowchartStructure();
+
+
+    if (
+        !window.diPseudoFlow
+        ||
+        typeof window.diPseudoFlow.saveProject
+        !== "function"
+    ) {
+
+        alert(
+            "Project storage is not available."
+        );
+
+        return false;
+    }
+
+
+    const pseudocode =
+        document.getElementById(
+            "pseudocode"
+        );
+
+
+    currentProject.title =
+        projectTitle.value.trim();
+
+
+    currentProject.question =
+        projectQuestion.value.trim();
+
+
+    currentProject.pseudocode =
+        pseudocode?.value || "";
+
+
+    currentProject.flowchart.zoom =
+        flowZoom;
+
+
+    if (!currentProject.title) {
+
+        alert(
+            "Please enter a project title before saving."
+        );
+
+        projectTitle.focus();
+
+        return false;
+    }
+
+
+    if (!currentProject.id) {
+
+        currentProject.id =
+            "project-" +
+            Date.now();
+    }
+
+
+    if (!currentProject.created) {
+
+        currentProject.created =
+            new Date().toISOString();
+    }
+
+
+    currentProject.modified =
+        new Date().toISOString();
+
+
+    const result =
+        await window.diPseudoFlow.saveProject(
+            currentProject
+        );
+
+
+    if (!result?.success) {
+
+        alert(
+            result?.error
+            ||
+            "Unable to save project."
+        );
+
+        return false;
+    }
+
+
+    currentProject =
+        result.project;
+
+
+    projectDirty = false;
+
+
+    projectModifiedText.textContent =
+        "Saved " +
+        formatProjectDate(
+            currentProject.modified
+        );
+
+
+    updateProjectStatus();
+    return true;
+}
+
+
+async function saveProjectAs() {
+    const suggested = `${projectTitle.value.trim() || "Untitled Project"} Copy`;
+    const title = window.prompt("Save this project as:", suggested);
+    if (title === null) return;
+    if (!title.trim()) { alert("Enter a project title for the copy."); return; }
+
+    const original = currentProject;
+    currentProject = structuredClone(original);
+    currentProject.id = null;
+    currentProject.created = null;
+    currentProject.modified = null;
+    projectTitle.value = title.trim();
+    currentProject.title = title.trim();
+    projectDirty = true;
+    const saved = await saveCurrentProject();
+    if (saved) resetProjectHistory();
+}
+
+
+/* =========================================================
+   LOAD PROJECT
+========================================================= */
+
+async function loadProject(projectId) {
+
+    if (
+        projectDirty
+        &&
+        !confirm(
+            "You have unsaved changes. Open another project anyway?"
+        )
+    ) {
+
+        return;
+    }
+
+
+    const result =
+        await window.diPseudoFlow.loadProject(
+            projectId
+        );
+
+
+    if (!result?.success) {
+
+        alert(
+            result?.error
+            ||
+            "Unable to open project."
+        );
+
+        return;
+    }
+
+
+    currentProject =
+        result.project;
+
+
+    ensureFlowchartStructure();
+
+
+    projectDirty = false;
+
+
+    updateProjectFieldsFromState();
+
+
+    projectModifiedText.textContent =
+        "Saved " +
+        formatProjectDate(
+            currentProject.modified
+        );
+
+
+    closeProjectLibrary();
+}
+
+
+/* =========================================================
+   DELETE PROJECT
+========================================================= */
+
+async function deleteProject(projectId) {
+
+    if (
+        !confirm(
+            "Delete this project permanently?"
+        )
+    ) {
+
+        return;
+    }
+
+
+    const result =
+        await window.diPseudoFlow.deleteProject(
+            projectId
+        );
+
+
+    if (!result?.success) {
+
+        alert(
+            result?.error
+            ||
+            "Unable to delete project."
+        );
+
+        return;
+    }
+
+
+    if (
+        currentProject.id
+        === projectId
+    ) {
+
+        newProject();
+    }
+
+
+    await showProjectLibrary();
+}
+
+
+/* =========================================================
+   PROJECT LIBRARY
+========================================================= */
+
+async function showProjectLibrary() {
+
+    projectLibraryOverlay.classList.add(
+        "visible"
+    );
+
+
+    projectLibraryBody.innerHTML = `
+        <div class="project-empty">
+            Loading projects...
+        </div>
+    `;
+
+
+    const result =
+        await window.diPseudoFlow.listProjects();
+
+
+    if (
+        !result?.success
+        ||
+        !result.projects?.length
+    ) {
+
+        projectLibraryBody.innerHTML = `
+            <div class="project-empty">
+                <strong>No saved projects yet.</strong>
+                <br><br>
+                Create a project and save it to see it here.
+            </div>
+        `;
+
+        return;
+    }
+
+
+    projectLibraryBody.innerHTML = "";
+
+
+    for (
+        const project
+        of result.projects
+    ) {
+
+        const card =
+            document.createElement("div");
+
+        card.className =
+            "project-card";
+
+
+        const information =
+            document.createElement("div");
+
+
+        const title =
+            document.createElement("h3");
+
+
+        title.textContent =
+            project.title
+            ||
+            "Untitled Project";
+
+
+        const details =
+            document.createElement("p");
+
+
+        details.textContent =
+            project.modified
+            ?
+            `Last modified: ${formatProjectDate(project.modified)}`
+            :
+            "Not modified";
+
+
+        information.appendChild(title);
+
+        information.appendChild(details);
+
+
+        const actions =
+            document.createElement("div");
+
+
+        actions.className =
+            "project-card-actions";
+
+
+        const openButton =
+            document.createElement("button");
+
+
+        openButton.type =
+            "button";
+
+
+        openButton.textContent =
+            "Open";
+
+
+        openButton.addEventListener(
+            "click",
+            () => loadProject(project.id)
+        );
+
+
+        const deleteButton =
+            document.createElement("button");
+
+
+        deleteButton.type =
+            "button";
+
+
+        deleteButton.textContent =
+            "Delete";
+
+
+        deleteButton.className =
+            "delete";
+
+
+        deleteButton.addEventListener(
+            "click",
+            () => deleteProject(project.id)
+        );
+
+
+        actions.appendChild(openButton);
+
+        actions.appendChild(deleteButton);
+
+
+        card.appendChild(information);
+
+        card.appendChild(actions);
+
+
+        projectLibraryBody.appendChild(card);
+    }
+}
+
+
+function closeProjectLibrary() {
+
+    projectLibraryOverlay.classList.remove(
+        "visible"
+    );
+}
+
+
+function formatProjectDate(dateValue) {
+
+    if (!dateValue) {
+
+        return "Unknown";
+    }
+
+
+    const date =
+        new Date(dateValue);
+
+
+    if (
+        Number.isNaN(
+            date.getTime()
+        )
+    ) {
+
+        return "Unknown";
+    }
+
+
+    return date.toLocaleString(
+        undefined,
+        {
+            dateStyle: "medium",
+            timeStyle: "short"
+        }
+    );
+}
+
+
+/* =========================================================
+   PROJECT EVENTS
+========================================================= */
+
+projectTitle.addEventListener(
+    "input",
+    markProjectDirty
+);
+
+
+projectQuestion.addEventListener(
+    "input",
+    markProjectDirty
+);
+
+
+document
+    .getElementById("pseudocode")
+    .addEventListener(
+        "input",
+        markProjectDirty
+    );
+
+
+document
+    .getElementById("newProjectButton")
+    .addEventListener(
         "click",
-        closeWelcomeScreen
+        newProject
+    );
+
+
+document
+    .getElementById("saveProjectButton")
+    .addEventListener(
+        "click",
+        saveCurrentProject
+    );
+
+document.getElementById("saveProjectAsButton").addEventListener("click", saveProjectAs);
+
+
+document
+    .getElementById("openProjectButton")
+    .addEventListener(
+        "click",
+        showProjectLibrary
+    );
+
+
+document
+    .getElementById("projectLibraryButton")
+    .addEventListener(
+        "click",
+        showProjectLibrary
+    );
+
+
+document
+    .getElementById("closeProjectLibrary")
+    .addEventListener(
+        "click",
+        closeProjectLibrary
+    );
+
+
+projectLibraryOverlay.addEventListener(
+    "click",
+    (event) => {
+
+        if (
+            event.target
+            === projectLibraryOverlay
+        ) {
+
+            closeProjectLibrary();
+        }
+    }
+);
+
+
+/* =========================================================
+   WORKSPACE TABS
+========================================================= */
+
+document
+    .querySelectorAll(".workspace-tab")
+    .forEach(
+        (tab) => {
+
+            tab.addEventListener(
+                "click",
+                () => {
+
+                    const target =
+                        tab.dataset.workspace;
+
+
+                    document
+                        .querySelectorAll(
+                            ".workspace-tab"
+                        )
+                        .forEach(
+                            (item) => {
+
+                                item.classList.remove(
+                                    "active"
+                                );
+                            }
+                        );
+
+
+                    document
+                        .querySelectorAll(
+                            ".workspace-view"
+                        )
+                        .forEach(
+                            (view) => {
+
+                                view.classList.remove(
+                                    "active"
+                                );
+                            }
+                        );
+
+
+                    tab.classList.add(
+                        "active"
+                    );
+
+
+                    document
+                        .getElementById(target)
+                        .classList.add(
+                            "active"
+                        );
+                }
+            );
+        }
+    );
+
+
+/* =========================================================
+   FLOWCHART UTILITIES
+========================================================= */
+
+function snapToGrid(value) {
+
+    if (!flowSnapEnabled) {
+
+        return value;
+    }
+
+
+    const gridSize = 20;
+
+
+    return Math.round(
+        value / gridSize
+    ) * gridSize;
+}
+
+
+function getCanvasPoint(
+    clientX,
+    clientY
+) {
+
+    const rect =
+        flowchartCanvas.getBoundingClientRect();
+
+
+    return {
+
+        x:
+            (clientX - rect.left - flowPanX)
+            / flowZoom,
+
+        y:
+            (clientY - rect.top - flowPanY)
+            / flowZoom
+    };
+}
+
+
+function getNodeById(nodeId) {
+
+    return currentProject
+        .flowchart
+        .nodes
+        .find(
+            node => node.id === nodeId
+        );
+}
+
+
+function createId(prefix) {
+
+    return (
+        prefix +
+        "-" +
+        Date.now() +
+        "-" +
+        Math.random()
+            .toString(36)
+            .slice(2, 8)
+    );
+}
+
+
+/* =========================================================
+   NODE CREATION
+========================================================= */
+
+function getDefaultNodeSize(type) {
+
+    if (type === "connection") return { width: 60, height: 60 };
+
+    if (type === "decision") {
+
+        return {
+            width: 160,
+            height: 100
+        };
+    }
+
+
+    if (type === "input-output") {
+
+        return {
+            width: 200,
+            height: 70
+        };
+    }
+
+
+    if (type === "text") {
+
+        return {
+            width: 180,
+            height: 50
+        };
+    }
+
+
+    return {
+        width: 180,
+        height: 70
+    };
+}
+
+
+function createFlowNode(
+    type,
+    x,
+    y
+) {
+
+    const size =
+        getDefaultNodeSize(type);
+
+
+    const labels = {
+
+        "start-end":
+            "START",
+
+        "process":
+            "PROCESS",
+
+        "input-output":
+            "INPUT / OUTPUT",
+
+        "decision":
+            "CONDITION",
+
+        "connection":
+            "A",
+
+        "text":
+            "Text"
+    };
+
+
+    return {
+
+        id:
+            createId("node"),
+
+        type,
+
+        x:
+            snapToGrid(
+                x - size.width / 2
+            ),
+
+        y:
+            snapToGrid(
+                y - size.height / 2
+            ),
+
+        width:
+            size.width,
+
+        height:
+            size.height,
+
+        text:
+            labels[type]
+            ||
+            "Text",
+
+        fontSize: 14
+    };
+}
+
+
+/* =========================================================
+   TEXT WRAPPING
+========================================================= */
+
+function wrapText(
+    text,
+    maxCharacters
+) {
+
+    const words =
+        String(text || "")
+            .split(/\s+/);
+
+
+    const lines = [];
+
+    let line = "";
+
+
+    for (
+        const word
+        of words
+    ) {
+
+        if (!line) {
+
+            line = word;
+
+            continue;
+        }
+
+
+        const candidate =
+            line +
+            " " +
+            word;
+
+
+        if (
+            candidate.length
+            <= maxCharacters
+        ) {
+
+            line =
+                candidate;
+
+        } else {
+
+            lines.push(line);
+
+            line = word;
+        }
+    }
+
+
+    if (line) {
+
+        lines.push(line);
+    }
+
+
+    return lines.length
+        ? lines
+        : [""];
+}
+
+
+/* =========================================================
+   NODE SHAPE
+========================================================= */
+
+function getShapeElementType(type) {
+
+    if (type === "connection") return "circle";
+
+    if (
+        type === "decision"
+        ||
+        type === "input-output"
+    ) {
+
+        return "polygon";
+    }
+
+
+    return "rect";
+}
+
+
+function applyNodeShape(
+    shape,
+    node
+) {
+
+    if (node.type === "connection") {
+        shape.setAttribute("cx", node.x + node.width / 2);
+        shape.setAttribute("cy", node.y + node.height / 2);
+        shape.setAttribute("r", Math.max(8, Math.min(node.width, node.height) / 2));
+        return;
+    }
+
+    if (
+        node.type
+        === "start-end"
+    ) {
+
+        shape.setAttribute(
+            "x",
+            node.x
+        );
+
+        shape.setAttribute(
+            "y",
+            node.y
+        );
+
+        shape.setAttribute(
+            "width",
+            node.width
+        );
+
+        shape.setAttribute(
+            "height",
+            node.height
+        );
+
+        shape.setAttribute(
+            "rx",
+            node.height / 2
+        );
+
+        shape.setAttribute(
+            "ry",
+            node.height / 2
+        );
+
+        return;
+    }
+
+
+    if (
+        node.type
+        === "input-output"
+    ) {
+
+        const skew =
+            Math.min(
+                30,
+                node.width * 0.18
+            );
+
+
+        const points = [
+
+            `${node.x + skew},${node.y}`,
+
+            `${node.x + node.width},${node.y}`,
+
+            `${node.x + node.width - skew},${node.y + node.height}`,
+
+            `${node.x},${node.y + node.height}`
+
+        ].join(" ");
+
+
+        shape.setAttribute(
+            "points",
+            points
+        );
+
+        return;
+    }
+
+
+    if (
+        node.type
+        === "decision"
+    ) {
+
+        const centerX =
+            node.x +
+            node.width / 2;
+
+
+        const centerY =
+            node.y +
+            node.height / 2;
+
+
+        const points = [
+
+            `${centerX},${node.y}`,
+
+            `${node.x + node.width},${centerY}`,
+
+            `${centerX},${node.y + node.height}`,
+
+            `${node.x},${centerY}`
+
+        ].join(" ");
+
+
+        shape.setAttribute(
+            "points",
+            points
+        );
+
+        return;
+    }
+
+
+    shape.setAttribute(
+        "x",
+        node.x
+    );
+
+    shape.setAttribute(
+        "y",
+        node.y
+    );
+
+    shape.setAttribute(
+        "width",
+        node.width
+    );
+
+    shape.setAttribute(
+        "height",
+        node.height
+    );
+
+    shape.setAttribute(
+        "rx",
+        node.type === "text"
+        ? 4
+        : 5
+    );
+}
+
+
+/* =========================================================
+   UPDATE NODE VISUAL
+========================================================= */
+
+function updateNodeVisual(
+    node,
+    group
+) {
+
+    if (!group) {
+
+        return;
+    }
+
+
+    const shape =
+        group.__flowShape;
+
+
+    const text =
+        group.__flowText;
+
+
+    if (!shape || !text) {
+
+        return;
+    }
+
+
+    applyNodeShape(
+        shape,
+        node
+    );
+
+
+    text.setAttribute(
+        "font-size",
+        node.fontSize || 14
+    );
+
+
+    const maxChars =
+        Math.max(
+            8,
+            Math.floor(
+                node.width /
+                ((node.fontSize || 14) * 0.58)
+            )
+        );
+
+
+    const lines =
+        wrapText(
+            node.text,
+            maxChars
+        );
+
+
+    text.innerHTML = "";
+
+
+    const lineHeight =
+        (node.fontSize || 14) *
+        1.2;
+
+
+    const centerX =
+        node.x +
+        node.width / 2;
+
+
+    const centerY =
+        node.y +
+        node.height / 2;
+
+
+    const startY =
+        centerY -
+        ((lines.length - 1) *
+            lineHeight) /
+        2;
+
+
+    lines.forEach(
+        (
+            line,
+            index
+        ) => {
+
+            const tspan =
+                document.createElementNS(
+                    SVG_NS,
+                    "tspan"
+                );
+
+
+            tspan.setAttribute(
+                "x",
+                centerX
+            );
+
+
+            tspan.setAttribute(
+                "y",
+                startY +
+                index *
+                lineHeight
+            );
+
+
+            tspan.textContent =
+                line;
+
+
+            text.appendChild(
+                tspan
+            );
+        }
+    );
+
+
+    updateResizeHandles(
+        group,
+        node
+    );
+}
+
+
+/* =========================================================
+   RESIZE HANDLE POSITIONS
+========================================================= */
+
+function getResizeHandlePositions(node) {
+
+    const x =
+        node.x;
+
+    const y =
+        node.y;
+
+    const w =
+        node.width;
+
+    const h =
+        node.height;
+
+    const s = 8;
+
+
+    return {
+
+        nw: [x - s / 2, y - s / 2],
+
+        n: [
+            x + w / 2 - s / 2,
+            y - s / 2
+        ],
+
+        ne: [
+            x + w - s / 2,
+            y - s / 2
+        ],
+
+        e: [
+            x + w - s / 2,
+            y + h / 2 - s / 2
+        ],
+
+        se: [
+            x + w - s / 2,
+            y + h - s / 2
+        ],
+
+        s: [
+            x + w / 2 - s / 2,
+            y + h - s / 2
+        ],
+
+        sw: [
+            x - s / 2,
+            y + h - s / 2
+        ],
+
+        w: [
+            x - s / 2,
+            y + h / 2 - s / 2
+        ]
+    };
+}
+
+
+function updateResizeHandles(
+    group,
+    node
+) {
+
+    if (!group.__flowHandles) {
+
+        return;
+    }
+
+
+    const positions =
+        getResizeHandlePositions(
+            node
+        );
+
+
+    for (
+        const [
+            direction,
+            handle
+        ]
+        of Object.entries(
+            group.__flowHandles
+        )
+    ) {
+
+        const position =
+            positions[direction];
+
+
+        handle.setAttribute(
+            "x",
+            position[0]
+        );
+
+
+        handle.setAttribute(
+            "y",
+            position[1]
+        );
+    }
+}
+
+
+/* =========================================================
+   CREATE RESIZE HANDLES
+========================================================= */
+
+function createResizeHandles(
+    group,
+    node
+) {
+
+    const handles = {};
+
+
+    const directions = [
+        "nw",
+        "n",
+        "ne",
+        "e",
+        "se",
+        "s",
+        "sw",
+        "w"
+    ];
+
+
+    const positions =
+        getResizeHandlePositions(
+            node
+        );
+
+
+    for (
+        const direction
+        of directions
+    ) {
+
+        const handle =
+            document.createElementNS(
+                SVG_NS,
+                "rect"
+            );
+
+
+        handle.classList.add(
+            "flow-resize-handle",
+            `resize-${direction}`
+        );
+
+
+        handle.setAttribute(
+            "width",
+            8
+        );
+
+
+        handle.setAttribute(
+            "height",
+            8
+        );
+
+
+        handle.setAttribute(
+            "x",
+            positions[direction][0]
+        );
+
+
+        handle.setAttribute(
+            "y",
+            positions[direction][1]
+        );
+
+
+        handle.dataset.direction =
+            direction;
+
+
+        handle.addEventListener(
+            "pointerdown",
+            (event) => {
+
+                event.preventDefault();
+
+                event.stopPropagation();
+
+
+                startResize(
+                    event,
+                    node,
+                    direction
+                );
+            }
+        );
+
+
+        group.appendChild(
+            handle
+        );
+
+
+        handles[direction] =
+            handle;
+    }
+
+
+    group.__flowHandles =
+        handles;
+}
+
+
+/* =========================================================
+   RENDER NODE ONCE
+========================================================= */
+
+function renderFlowNode(
+    node
+) {
+
+    const group =
+        document.createElementNS(
+            SVG_NS,
+            "g"
+        );
+
+
+    group.classList.add(
+        "flowchart-node"
+    );
+
+
+    group.dataset.nodeId =
+        node.id;
+
+
+    if (selectedFlowNodes.has(node.id) || selectedFlowNode === node.id) {
+        group.classList.add("selected");
+    }
+
+
+    if (
+        connectorSourceNode
+        === node.id
+    ) {
+
+        group.classList.add(
+            "connector-source"
+        );
+    }
+
+
+    const shape =
+        document.createElementNS(
+            SVG_NS,
+            getShapeElementType(
+                node.type
+            )
+        );
+
+
+    shape.classList.add(
+        "flowchart-node-shape"
+    );
+
+
+    const text =
+        document.createElementNS(
+            SVG_NS,
+            "text"
+        );
+
+
+    text.classList.add(
+        "flowchart-node-text"
+    );
+
+
+    group.appendChild(shape);
+
+    group.appendChild(text);
+
+
+    group.__flowShape =
+        shape;
+
+    group.__flowText =
+        text;
+
+
+    updateNodeVisual(
+        node,
+        group
+    );
+
+
+    group.addEventListener(
+        "pointerdown",
+        (event) => {
+
+            event.preventDefault();
+
+            event.stopPropagation();
+
+
+            if (
+                selectedFlowTool
+                === "connector"
+            ) {
+
+                const point = getCanvasPoint(event.clientX, event.clientY);
+                const sides = getNodeAnchorPositions(node);
+                const nearestSide = Object.entries(sides).sort((a, b) =>
+                    Math.hypot(a[1].x - point.x, a[1].y - point.y) -
+                    Math.hypot(b[1].x - point.x, b[1].y - point.y)
+                )[0][0];
+                handleConnectorAnchorClick(node.id, nearestSide);
+                return;
+            }
+
+
+            if (
+                selectedFlowTool
+                !== "select"
+            ) {
+
+                return;
+            }
+
+
+            if (event.shiftKey) {
+                if (selectedFlowNodes.has(node.id)) {
+                    selectedFlowNodes.delete(node.id);
+                    selectedFlowNode = [...selectedFlowNodes].pop() || null;
+                } else {
+                    selectedFlowNodes.add(node.id);
+                    selectedFlowNode = node.id;
+                }
+                selectedFlowConnector = null;
+                renderFlowchart();
+                return;
+            }
+
+            if (!selectedFlowNodes.has(node.id)) selectFlowNode(node.id);
+            else selectedFlowNode = node.id;
+
+            startNodeDrag(event, node, group);
+        }
+    );
+
+
+    group.addEventListener(
+        "dblclick",
+        (event) => {
+
+            event.preventDefault();
+
+            event.stopPropagation();
+
+
+            if (
+                selectedFlowTool
+                === "select"
+            ) {
+
+                openFlowTextEditor(
+                    node
+                );
+            }
+        }
+    );
+
+
+    if (
+        selectedFlowNode
+        === node.id
+    ) {
+
+        createResizeHandles(
+            group,
+            node
+        );
+    }
+
+
+    if (selectedFlowTool === "connector") {
+        createConnectorAnchors(group, node);
+    }
+
+    flowchartNodes.appendChild(
+        group
+    );
+}
+
+
+function getNodeAnchorPositions(node) {
+    const left = node.x;
+    const right = node.x + node.width;
+    const top = node.y;
+    const bottom = node.y + node.height;
+    return {
+        top: { x: node.x + node.width / 2, y: top },
+        right: { x: right, y: node.y + node.height / 2 },
+        bottom: { x: node.x + node.width / 2, y: bottom },
+        left: { x: left, y: node.y + node.height / 2 }
+    };
+}
+
+function createConnectorAnchors(group, node) {
+    const anchors = getNodeAnchorPositions(node);
+    Object.entries(anchors).forEach(([side, point]) => {
+        const anchor = document.createElementNS(SVG_NS, "circle");
+        anchor.classList.add("connector-anchor");
+        if (connectorSourceNode === node.id && connectorSourceSide === side) {
+            anchor.classList.add("source-anchor");
+        }
+        anchor.setAttribute("cx", point.x);
+        anchor.setAttribute("cy", point.y);
+        anchor.setAttribute("r", 5);
+        anchor.setAttribute("aria-label", `${side} connection point`);
+        anchor.addEventListener("pointerdown", event => {
+            event.preventDefault();
+            event.stopPropagation();
+            handleConnectorAnchorClick(node.id, side);
+        });
+        group.appendChild(anchor);
+    });
+}
+
+
+/* =========================================================
+   RENDER FLOWCHART
+========================================================= */
+
+function renderFlowchart() {
+
+    ensureFlowchartStructure();
+
+
+    flowchartNodes.innerHTML = "";
+
+    flowchartConnectors.innerHTML = "";
+
+
+    const nodes =
+        currentProject
+            .flowchart
+            .nodes;
+
+
+    flowchartEmptyMessage.style.display =
+        nodes.length
+        ? "none"
+        : "block";
+
+
+    renderFlowConnectors();
+
+
+    nodes.forEach(
+        renderFlowNode
+    );
+
+    const selectionCount = selectedFlowNodes.size || (selectedFlowNode ? 1 : 0);
+    const selectionCountElement = document.getElementById("flowSelectionCount");
+    if (selectionCountElement) selectionCountElement.textContent = `${selectionCount} selected${selectionCount > 1 ? " — Shift-click to add/remove" : ""}`;
+
+    updateFlowchartTransform();
+}
+
+
+/* =========================================================
+   NODE SELECTION
+========================================================= */
+
+function selectFlowNode(
+    nodeId
+) {
+
+    selectedFlowNode = nodeId;
+    selectedFlowNodes = new Set([nodeId]);
+
+
+    selectedFlowConnector =
+        null;
+
+
+    closeFlowTextEditor();
+
+
+    document
+        .querySelectorAll(
+            ".flowchart-node"
+        )
+        .forEach(
+            group => {
+
+                const active = selectedFlowNodes.has(group.dataset.nodeId);
+
+
+                group.classList.toggle(
+                    "selected",
+                    active
+                );
+
+
+                group.classList.toggle(
+                    "connector-source",
+                    group.dataset.nodeId
+                    === connectorSourceNode
+                );
+
+
+                if (
+                    group.dataset.nodeId === selectedFlowNode
+                    &&
+                    !group.__flowHandles
+                ) {
+
+                    const node =
+                        getNodeById(
+                            nodeId
+                        );
+
+
+                    if (node) {
+
+                        createResizeHandles(
+                            group,
+                            node
+                        );
+                    }
+                }
+
+
+                if (
+                    group.dataset.nodeId !== selectedFlowNode
+                    &&
+                    group.__flowHandles
+                ) {
+
+                    Object.values(
+                        group.__flowHandles
+                    )
+                    .forEach(
+                        handle =>
+                            handle.remove()
+                    );
+
+
+                    group.__flowHandles =
+                        null;
+                }
+            }
+        );
+}
+
+
+/* =========================================================
+   TOOL SELECTION
+========================================================= */
+
+function setFlowTool(
+    tool
+) {
+
+    selectedFlowTool =
+        tool;
+
+
+    if (
+        tool !== "connector"
+    ) {
+
+        connectorSourceNode =
+            null;
+        connectorSourceSide = null;
+    }
+
+
+    document
+        .querySelectorAll(
+            "[data-flow-tool]"
+        )
+        .forEach(
+            button => {
+
+                button.classList.toggle(
+                    "active",
+                    button.dataset.flowTool
+                    === tool
+                );
+            }
+        );
+
+
+    flowchartCanvasWrapper.style.cursor =
+        tool === "connector"
+        ? "crosshair"
+        : "default";
+
+
+    document
+        .querySelectorAll(
+            ".flowchart-node"
+        )
+        .forEach(
+            group => {
+
+                group.classList.toggle(
+                    "connector-source",
+                    group.dataset.nodeId
+                    === connectorSourceNode
+                );
+            }
+        );
+
+    renderFlowchart();
+}
+
+
+/* =========================================================
+   TOOL BUTTONS
+========================================================= */
+
+document
+    .querySelectorAll(
+        "[data-flow-tool]"
+    )
+    .forEach(
+        button => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    setFlowTool(
+                        button.dataset.flowTool
+                    );
+                }
+            );
+
+
+            button.addEventListener(
+                "dragstart",
+                event => {
+
+                    const tool =
+                        button.dataset.flowTool;
+
+
+                    if (
+                        tool === "select"
+                        ||
+                        tool === "connector"
+                    ) {
+
+                        event.preventDefault();
+
+                        return;
+                    }
+
+
+                    event.dataTransfer.setData(
+                        "text/flow-tool",
+                        tool
+                    );
+
+
+                    event.dataTransfer.effectAllowed =
+                        "copy";
+                }
+            );
+        }
+    );
+
+
+/* =========================================================
+   TOOLBAR DRAG AND DROP
+========================================================= */
+
+flowchartCanvasWrapper.addEventListener(
+    "dragover",
+    event => {
+
+        event.preventDefault();
+
+        event.dataTransfer.dropEffect =
+            "copy";
+
+        flowchartCanvasWrapper.classList.add(
+            "drag-over"
+        );
+    }
+);
+
+
+flowchartCanvasWrapper.addEventListener(
+    "dragleave",
+    event => {
+
+        if (
+            event.relatedTarget
+            &&
+            flowchartCanvasWrapper.contains(
+                event.relatedTarget
+            )
+        ) {
+
+            return;
+        }
+
+
+        flowchartCanvasWrapper.classList.remove(
+            "drag-over"
+        );
+    }
+);
+
+
+flowchartCanvasWrapper.addEventListener(
+    "drop",
+    event => {
+
+        event.preventDefault();
+
+
+        flowchartCanvasWrapper.classList.remove(
+            "drag-over"
+        );
+
+
+        const type =
+            event.dataTransfer.getData(
+                "text/flow-tool"
+            );
+
+
+        if (!type) {
+
+            return;
+        }
+
+
+        const point =
+            getCanvasPoint(
+                event.clientX,
+                event.clientY
+            );
+
+
+        addFlowNode(
+            type,
+            point.x,
+            point.y
+        );
+
+
+        setFlowTool("select");
+    }
+);
+
+
+/* =========================================================
+   CLICK TO PLACE
+========================================================= */
+
+flowchartCanvas.addEventListener(
+    "click",
+    event => {
+
+        if (
+            selectedFlowTool
+            === "select"
+            ||
+            selectedFlowTool
+            === "connector"
+        ) {
+
+            if (
+                event.target
+                === flowchartCanvas
+            ) {
+
+                selectedFlowNode =
+                    null;
+
+                selectedFlowConnector =
+                    null;
+
+                connectorSourceNode =
+                    null;
+
+                closeFlowTextEditor();
+
+                renderFlowchart();
+            }
+
+            return;
+        }
+
+
+        if (
+            event.target.closest
+            &&
+            event.target.closest(
+                ".flowchart-node"
+            )
+        ) {
+
+            return;
+        }
+
+
+        const point =
+            getCanvasPoint(
+                event.clientX,
+                event.clientY
+            );
+
+
+        addFlowNode(
+            selectedFlowTool,
+            point.x,
+            point.y
+        );
+
+
+        setFlowTool("select");
+    }
+);
+
+
+/* =========================================================
+   ADD NODE
+========================================================= */
+
+function addFlowNode(
+    type,
+    x,
+    y
+) {
+
+    ensureFlowchartStructure();
+
+
+    const node =
+        createFlowNode(
+            type,
+            x,
+            y
+        );
+
+
+    currentProject
+        .flowchart
+        .nodes
+        .push(node);
+
+    selectedFlowNodes = new Set();
+    selectedFlowNode =
+        node.id;
+
+
+    selectedFlowConnector =
+        null;
+
+
+    markProjectDirty();
+
+    renderFlowchart();
+
+    setFlowTool("select");
+}
+
+
+/* =========================================================
+   NODE DRAGGING
+========================================================= */
+
+function startNodeDrag(
+    event,
+    node,
+    group
+) {
+
+    const point =
+        getCanvasPoint(
+            event.clientX,
+            event.clientY
+        );
+
+
+    const dragNodes = (selectedFlowNodes.size > 1 && selectedFlowNodes.has(node.id))
+        ? currentProject.flowchart.nodes.filter(item => selectedFlowNodes.has(item.id))
+        : [node];
+
+    activeDrag = {
+        nodes: dragNodes.map(item => ({
+            node: item,
+            group: document.querySelector(`.flowchart-node[data-node-id="${item.id}"]`),
+            originalX: item.x,
+            originalY: item.y
+        })),
+
+        node,
+
+        group,
+
+        startX:
+            point.x,
+
+        startY:
+            point.y,
+
+        originalX:
+            node.x,
+
+        originalY:
+            node.y,
+
+        moved: false
+    };
+
+
+    window.addEventListener(
+        "pointermove",
+        handleNodeDragMove
+    );
+
+
+    window.addEventListener(
+        "pointerup",
+        stopNodeDrag,
+        {
+            once: true
+        }
+    );
+}
+
+
+function handleNodeDragMove(
+    event
+) {
+
+    if (!activeDrag) {
+
+        return;
+    }
+
+
+    const point =
+        getCanvasPoint(
+            event.clientX,
+            event.clientY
+        );
+
+
+    const dx = point.x - activeDrag.startX;
+    const dy = point.y - activeDrag.startY;
+    activeDrag.nodes.forEach(item => {
+        let x = item.originalX + dx;
+        let y = item.originalY + dy;
+        if (flowSnapEnabled) { x = snapToGrid(x); y = snapToGrid(y); }
+        if (x !== item.node.x || y !== item.node.y) activeDrag.moved = true;
+        item.node.x = x;
+        item.node.y = y;
+        updateNodeVisual(item.node, item.group);
+    });
+
+
+    updateAllConnectorGeometry();
+}
+
+
+function stopNodeDrag() {
+
+    if (!activeDrag) {
+
+        return;
+    }
+
+
+    if (activeDrag.moved) {
+
+        markProjectDirty();
+    }
+
+
+    activeDrag =
+        null;
+
+
+    window.removeEventListener(
+        "pointermove",
+        handleNodeDragMove
+    );
+}
+
+
+/* =========================================================
+   RESIZING
+========================================================= */
+
+function getMinimumNodeSize(node) {
+
+    if (
+        node.type
+        === "decision"
+    ) {
+
+        return {
+            width: 90,
+            height: 70
+        };
+    }
+
+
+    if (
+        node.type
+        === "text"
+    ) {
+
+        return {
+            width: 80,
+            height: 35
+        };
+    }
+
+
+    return {
+        width: 100,
+        height: 40
+    };
+}
+
+
+function startResize(
+    event,
+    node,
+    direction
+) {
+
+    const point =
+        getCanvasPoint(
+            event.clientX,
+            event.clientY
+        );
+
+
+    activeResize = {
+
+        node,
+
+        direction,
+
+        startX:
+            point.x,
+
+        startY:
+            point.y,
+
+        originalX:
+            node.x,
+
+        originalY:
+            node.y,
+
+        originalWidth:
+            node.width,
+
+        originalHeight:
+            node.height
+    };
+
+
+    window.addEventListener(
+        "pointermove",
+        handleResizeMove
+    );
+
+
+    window.addEventListener(
+        "pointerup",
+        stopResize,
+        {
+            once: true
+        }
+    );
+}
+
+
+function handleResizeMove(
+    event
+) {
+
+    if (!activeResize) {
+
+        return;
+    }
+
+
+    const point =
+        getCanvasPoint(
+            event.clientX,
+            event.clientY
+        );
+
+
+    const dx =
+        point.x -
+        activeResize.startX;
+
+
+    const dy =
+        point.y -
+        activeResize.startY;
+
+
+    const min =
+        getMinimumNodeSize(
+            activeResize.node
+        );
+
+
+    let x =
+        activeResize.originalX;
+
+    let y =
+        activeResize.originalY;
+
+    let width =
+        activeResize.originalWidth;
+
+    let height =
+        activeResize.originalHeight;
+
+
+    const direction =
+        activeResize.direction;
+
+
+    if (
+        direction.includes("e")
+    ) {
+
+        width =
+            activeResize.originalWidth +
+            dx;
+    }
+
+
+    if (
+        direction.includes("w")
+    ) {
+
+        width =
+            activeResize.originalWidth -
+            dx;
+
+        x =
+            activeResize.originalX +
+            dx;
+    }
+
+
+    if (
+        direction.includes("s")
+    ) {
+
+        height =
+            activeResize.originalHeight +
+            dy;
+    }
+
+
+    if (
+        direction.includes("n")
+    ) {
+
+        height =
+            activeResize.originalHeight -
+            dy;
+
+        y =
+            activeResize.originalY +
+            dy;
+    }
+
+
+    if (
+        width < min.width
+    ) {
+
+        if (
+            direction.includes("w")
+        ) {
+
+            x =
+                activeResize.originalX +
+                activeResize.originalWidth -
+                min.width;
+        }
+
+
+        width =
+            min.width;
+    }
+
+
+    if (
+        height < min.height
+    ) {
+
+        if (
+            direction.includes("n")
+        ) {
+
+            y =
+                activeResize.originalY +
+                activeResize.originalHeight -
+                min.height;
+        }
+
+
+        height =
+            min.height;
+    }
+
+
+    if (flowSnapEnabled) {
+
+        width =
+            Math.max(
+                min.width,
+                snapToGrid(width)
+            );
+
+
+        height =
+            Math.max(
+                min.height,
+                snapToGrid(height)
+            );
+
+
+        x =
+            snapToGrid(x);
+
+        y =
+            snapToGrid(y);
+    }
+
+
+    const node =
+        activeResize.node;
+
+
+    node.x =
+        x;
+
+    node.y =
+        y;
+
+    node.width =
+        width;
+
+    node.height =
+        height;
+
+
+    const group =
+        document.querySelector(
+            `.flowchart-node[data-node-id="${node.id}"]`
+        );
+
+
+    if (group) {
+
+        updateNodeVisual(
+            node,
+            group
+        );
+    }
+
+
+    updateAllConnectorGeometry();
+
+    markProjectDirty();
+}
+
+
+function stopResize() {
+
+    activeResize =
+        null;
+
+
+    window.removeEventListener(
+        "pointermove",
+        handleResizeMove
+    );
+}
+
+
+/* =========================================================
+   TEXT EDITING
+========================================================= */
+
+function openFlowTextEditor(
+    node
+) {
+
+    editingNodeId =
+        node.id;
+
+
+    flowTextInput.value =
+        node.text || "";
+
+
+    flowFontSizeInput.value =
+        node.fontSize || 14;
+
+
+    const wrapperRect =
+        flowchartCanvasWrapper
+            .getBoundingClientRect();
+
+
+    const canvasRect =
+        flowchartCanvas
+            .getBoundingClientRect();
+
+
+    const screenX =
+        canvasRect.left +
+        (
+            node.x +
+            node.width
+        ) *
+        flowZoom;
+
+
+    const screenY =
+        canvasRect.top +
+        node.y *
+        flowZoom;
+
+
+    let left =
+        screenX -
+        wrapperRect.left +
+        10;
+
+
+    let top =
+        screenY -
+        wrapperRect.top +
+        10;
+
+
+    left =
+        Math.min(
+            left,
+            wrapperRect.width - 280
+        );
+
+
+    top =
+        Math.min(
+            top,
+            wrapperRect.height - 170
+        );
+
+
+    flowTextEditor.style.left =
+        Math.max(
+            10,
+            left
+        ) + "px";
+
+
+    flowTextEditor.style.top =
+        Math.max(
+            10,
+            top
+        ) + "px";
+
+
+    flowTextEditor.classList.add(
+        "visible"
+    );
+
+
+    setTimeout(
+        () => {
+
+            flowTextInput.focus();
+
+            flowTextInput.select();
+
+        },
+        0
+    );
+}
+
+
+function closeFlowTextEditor() {
+
+    editingNodeId =
+        null;
+
+
+    flowTextEditor.classList.remove(
+        "visible"
+    );
+}
+
+
+document
+    .getElementById(
+        "flowTextSave"
+    )
+    .addEventListener(
+        "click",
+        () => {
+
+            if (!editingNodeId) {
+
+                return;
+            }
+
+
+            const node =
+                getNodeById(
+                    editingNodeId
+                );
+
+
+            if (!node) {
+
+                closeFlowTextEditor();
+
+                return;
+            }
+
+
+            node.text =
+                flowTextInput.value;
+
+
+            node.fontSize =
+                Math.max(
+                    8,
+                    Math.min(
+                        48,
+                        Number(
+                            flowFontSizeInput.value
+                        )
+                        || 14
+                    )
+                );
+
+
+            const group =
+                document.querySelector(
+                    `.flowchart-node[data-node-id="${node.id}"]`
+                );
+
+
+            if (group) {
+
+                updateNodeVisual(
+                    node,
+                    group
+                );
+            }
+
+
+            markProjectDirty();
+
+            closeFlowTextEditor();
+        }
+    );
+
+
+document
+    .getElementById(
+        "flowTextCancel"
+    )
+    .addEventListener(
+        "click",
+        closeFlowTextEditor
+    );
+
+
+flowTextInput.addEventListener(
+    "keydown",
+    event => {
+
+        if (
+            event.ctrlKey
+            &&
+            event.key === "Enter"
+        ) {
+
+            document
+                .getElementById(
+                    "flowTextSave"
+                )
+                .click();
+        }
+
+
+        if (
+            event.key === "Escape"
+        ) {
+
+            closeFlowTextEditor();
+        }
+    }
+);
+
+
+/* =========================================================
+   CONNECTORS
+========================================================= */
+
+function handleConnectorNodeClick(
+    nodeId
+) {
+
+    const node =
+        getNodeById(
+            nodeId
+        );
+
+
+    if (!node) {
+
+        return;
+    }
+
+
+    if (!connectorSourceNode) {
+
+        connectorSourceNode =
+            nodeId;
+
+
+        selectedFlowNode =
+            nodeId;
+
+
+        selectedFlowConnector =
+            null;
+
+
+        document
+            .querySelectorAll(
+                ".flowchart-node"
+            )
+            .forEach(
+                group => {
+
+                    group.classList.toggle(
+                        "selected",
+                        group.dataset.nodeId
+                        === nodeId
+                    );
+
+
+                    group.classList.toggle(
+                        "connector-source",
+                        group.dataset.nodeId
+                        === nodeId
+                    );
+                }
+            );
+
+
+        return;
+    }
+
+
+    if (
+        connectorSourceNode
+        === nodeId
+    ) {
+
+        connectorSourceNode =
+            null;
+
+
+        document
+            .querySelectorAll(
+                ".flowchart-node"
+            )
+            .forEach(
+                group =>
+                    group.classList.remove(
+                        "connector-source"
+                    )
+            );
+
+
+        return;
+    }
+
+
+    const source =
+        getNodeById(
+            connectorSourceNode
+        );
+
+
+    if (!source) {
+
+        connectorSourceNode =
+            null;
+
+        return;
+    }
+
+
+    /*
+       Prevent duplicate connectors.
+    */
+
+    const duplicate =
+        currentProject
+            .flowchart
+            .connectors
+            .some(
+                connector =>
+                    connector.from
+                    === source.id
+                    &&
+                    connector.to
+                    === node.id
+            );
+
+
+    if (duplicate) {
+
+        connectorSourceNode =
+            null;
+
+        setFlowTool("select");
+
+        return;
+    }
+
+
+    let label = "";
+
+
+    if (
+        source.type
+        === "decision"
+    ) {
+
+        const outgoing =
+            currentProject
+                .flowchart
+                .connectors
+                .filter(
+                    connector =>
+                        connector.from
+                        === source.id
+                );
+
+
+        label =
+            outgoing.length === 0
+            ? "TRUE"
+            : outgoing.length === 1
+            ? "FALSE"
+            : "";
+    }
+
+
+    const connector = {
+
+        id:
+            createId("connector"),
+
+        from:
+            source.id,
+
+        to:
+            node.id,
+
+        label
+    };
+
+
+    currentProject
+        .flowchart
+        .connectors
+        .push(
+            connector
+        );
+
+
+    selectedFlowConnector =
+        connector.id;
+
+
+    selectedFlowNode =
+        null;
+
+
+    connectorSourceNode =
+        null;
+
+
+    markProjectDirty();
+
+    renderFlowchart();
+
+    setFlowTool("select");
+}
+
+
+function handleConnectorAnchorClick(nodeId, side) {
+    const node = getNodeById(nodeId);
+    if (!node) return;
+
+    if (!connectorSourceNode) {
+        connectorSourceNode = nodeId;
+        connectorSourceSide = side;
+        selectedFlowNode = null;
+        selectedFlowConnector = null;
+        renderFlowchart();
+        return;
+    }
+
+    if (connectorSourceNode === nodeId) {
+        connectorSourceNode = nodeId;
+        connectorSourceSide = side;
+        renderFlowchart();
+        return;
+    }
+
+    const source = getNodeById(connectorSourceNode);
+    if (!source) {
+        connectorSourceNode = null;
+        connectorSourceSide = null;
+        renderFlowchart();
+        return;
+    }
+
+    const duplicate = currentProject.flowchart.connectors.some(connector =>
+        connector.from === source.id && connector.to === node.id
+    );
+    if (duplicate) {
+        connectorSourceNode = null;
+        connectorSourceSide = null;
+        setFlowTool("select");
+        return;
+    }
+
+    const outgoing = currentProject.flowchart.connectors.filter(connector => connector.from === source.id);
+    const label = source.type === "decision"
+        ? (outgoing.length === 0 ? "TRUE" : outgoing.length === 1 ? "FALSE" : "")
+        : "";
+
+    const connector = {
+        id: createId("connector"),
+        from: source.id,
+        to: node.id,
+        fromSide: connectorSourceSide,
+        toSide: side,
+        route: document.getElementById("flowConnectorRoute").value,
+        label
+    };
+
+    currentProject.flowchart.connectors.push(connector);
+    selectedFlowConnector = connector.id;
+    selectedFlowNode = null;
+    connectorSourceNode = null;
+    connectorSourceSide = null;
+    markProjectDirty();
+    setFlowTool("select");
+}
+
+
+/* =========================================================
+   CONNECTION POINTS
+========================================================= */
+
+function getConnectionPoint(
+    node,
+    targetNode,
+    side = "auto"
+) {
+
+    if (side && side !== "auto") {
+        const anchors = getNodeAnchorPositions(node);
+        if (anchors[side]) return anchors[side];
+    }
+
+    const sourceCenterX =
+        node.x +
+        node.width / 2;
+
+
+    const sourceCenterY =
+        node.y +
+        node.height / 2;
+
+
+    const targetCenterX =
+        targetNode.x +
+        targetNode.width / 2;
+
+
+    const targetCenterY =
+        targetNode.y +
+        targetNode.height / 2;
+
+
+    const dx =
+        targetCenterX -
+        sourceCenterX;
+
+
+    const dy =
+        targetCenterY -
+        sourceCenterY;
+
+
+    /*
+       For vertical relationships, use top/bottom.
+       For horizontal relationships, use left/right.
+    */
+
+    if (
+        Math.abs(dx)
+        >
+        Math.abs(dy)
+    ) {
+
+        return {
+
+            x:
+                dx >= 0
+                ? node.x + node.width
+                : node.x,
+
+            y:
+                sourceCenterY
+        };
+    }
+
+
+    return {
+
+        x:
+            sourceCenterX,
+
+        y:
+            dy >= 0
+            ? node.y + node.height
+            : node.y
+    };
+}
+
+function getConnectorGeometry(connector, from, to) {
+    const start = getConnectionPoint(from, to, connector.fromSide || "auto");
+    const end = getConnectionPoint(to, from, connector.toSide || "auto");
+    if (connector.route === "orthogonal") {
+        let d;
+        if (["left", "right"].includes(connector.fromSide || "auto")) {
+            const middleX = (start.x + end.x) / 2;
+            d = `M ${start.x} ${start.y} H ${middleX} V ${end.y} H ${end.x}`;
+        } else {
+            const middleY = (start.y + end.y) / 2;
+            d = `M ${start.x} ${start.y} V ${middleY} H ${end.x} V ${end.y}`;
+        }
+        const horizontalFirst = ["left", "right"].includes(connector.fromSide || "auto");
+        return {
+            start,
+            end,
+            d,
+            labelX: (start.x + end.x) / 2 + 5,
+            labelY: (start.y + end.y) / 2 - 6
+        };
+    }
+    return { start, end, labelX: (start.x + end.x) / 2 + 5, labelY: (start.y + end.y) / 2 - 5 };
+}
+
+
+/* =========================================================
+   RENDER CONNECTORS
+========================================================= */
+
+function renderFlowConnectors() {
+
+    ensureFlowchartStructure();
+
+
+    currentProject
+        .flowchart
+        .connectors
+        .forEach(
+            connector => {
+
+                const from =
+                    getNodeById(
+                        connector.from
+                    );
+
+
+                const to =
+                    getNodeById(
+                        connector.to
+                    );
+
+
+                if (!from || !to) {
+
+                    return;
+                }
+
+
+                const geometry = getConnectorGeometry(connector, from, to);
+                const { start, end } = geometry;
+
+                const line =
+                    document.createElementNS(
+                        SVG_NS,
+                        connector.route === "orthogonal" ? "path" : "line"
+                    );
+
+
+                line.classList.add(
+                    "flowchart-connector"
+                );
+
+
+                if (
+                    selectedFlowConnector
+                    === connector.id
+                ) {
+
+                    line.classList.add(
+                        "selected"
+                    );
+                }
+
+
+                line.dataset.connectorId =
+                    connector.id;
+
+
+                if (connector.route === "orthogonal") {
+                    line.setAttribute("d", geometry.d);
+                } else {
+                    line.setAttribute("x1", start.x);
+                    line.setAttribute("y1", start.y);
+                    line.setAttribute("x2", end.x);
+                    line.setAttribute("y2", end.y);
+                }
+
+
+                line.addEventListener(
+                    "pointerdown",
+                    event => {
+
+                        event.preventDefault();
+
+                        event.stopPropagation();
+
+
+                        if (
+                            selectedFlowTool
+                            === "connector"
+                        ) {
+
+                            return;
+                        }
+
+
+                        selectedFlowConnector =
+                            connector.id;
+
+
+                        selectedFlowNode =
+                            null;
+
+
+                        connectorSourceNode =
+                            null;
+
+
+                        renderFlowchart();
+                    }
+                );
+
+
+                flowchartConnectors.appendChild(
+                    line
+                );
+
+
+                if (
+                    connector.label
+                ) {
+
+                    const label =
+                        document.createElementNS(
+                            SVG_NS,
+                            "text"
+                        );
+
+
+                    label.classList.add(
+                        "flowchart-branch-label"
+                    );
+
+
+                    label.setAttribute("x", geometry.labelX);
+                    label.setAttribute("y", geometry.labelY);
+
+
+                    label.textContent =
+                        connector.label;
+
+
+                    flowchartConnectors.appendChild(
+                        label
+                    );
+                }
+            }
+        );
+}
+
+
+/* =========================================================
+   UPDATE CONNECTORS WITHOUT REBUILDING THEM
+========================================================= */
+
+function updateAllConnectorGeometry() {
+
+    const lines =
+        flowchartConnectors
+            .querySelectorAll(
+                ".flowchart-connector"
+            );
+
+
+    lines.forEach(
+        line => {
+
+            const connector =
+                currentProject
+                    .flowchart
+                    .connectors
+                    .find(
+                        item =>
+                            item.id
+                            === line.dataset.connectorId
+                    );
+
+
+            if (!connector) {
+
+                return;
+            }
+
+
+            const from =
+                getNodeById(
+                    connector.from
+                );
+
+
+            const to =
+                getNodeById(
+                    connector.to
+                );
+
+
+            if (!from || !to) {
+
+                return;
+            }
+
+
+            const geometry = getConnectorGeometry(connector, from, to);
+            const { start, end } = geometry;
+            if (connector.route === "orthogonal") {
+                line.setAttribute("d", geometry.d);
+            } else {
+                line.setAttribute("x1", start.x);
+                line.setAttribute("y1", start.y);
+                line.setAttribute("x2", end.x);
+                line.setAttribute("y2", end.y);
+            }
+        }
     );
 
 
     /*
-       Show the welcome screen only when the user
-       has not previously dismissed it.
+       Branch labels need to follow the lines.
+       There are normally only a few labels, so updating
+       them separately is inexpensive.
     */
 
-    if (
-        localStorage.getItem(WELCOME_STORAGE_KEY)
-        === "true"
-    ) {
+    currentProject
+        .flowchart
+        .connectors
+        .forEach(
+            connector => {
 
-        welcomeScreen.style.display = "none";
+                if (!connector.label) {
 
+                    return;
+                }
+
+
+                const from =
+                    getNodeById(
+                        connector.from
+                    );
+
+
+                const to =
+                    getNodeById(
+                        connector.to
+                    );
+
+
+                if (!from || !to) {
+
+                    return;
+                }
+
+
+                const geometry = getConnectorGeometry(connector, from, to);
+
+                const line =
+                    flowchartConnectors
+                        .querySelector(
+                            `[data-connector-id="${connector.id}"]`
+                        );
+
+
+                if (!line) {
+
+                    return;
+                }
+
+
+                /*
+                   Find the text label immediately after
+                   the connector line.
+                */
+
+                let next =
+                    line.nextElementSibling;
+
+
+                while (
+                    next
+                    &&
+                    next.tagName !== "text"
+                ) {
+
+                    next =
+                        next.nextElementSibling;
+                }
+
+
+                if (
+                    next
+                    &&
+                    next.tagName === "text"
+                ) {
+
+                    next.setAttribute("x", geometry.labelX);
+                    next.setAttribute("y", geometry.labelY);
+                }
+            }
+        );
+}
+
+
+function applyProjectHistory(nextState, oppositeStack) {
+    oppositeStack.push(structuredClone(currentProject));
+    currentProject = structuredClone(nextState);
+    historySnapshot = JSON.stringify(currentProject);
+    projectDirty = true;
+    updateProjectFieldsFromState({ resetHistory: false });
+    projectModifiedText.textContent = "Unsaved changes";
+    updateHistoryButtons();
+}
+
+function undoProjectChange() {
+    if (!undoHistory.length) return;
+    applyProjectHistory(undoHistory.pop(), redoHistory);
+}
+
+function redoProjectChange() {
+    if (!redoHistory.length) return;
+    applyProjectHistory(redoHistory.pop(), undoHistory);
+}
+
+function getSelectedNodeIds() {
+    const ids = new Set(selectedFlowNodes);
+    if (selectedFlowNode) ids.add(selectedFlowNode);
+    return ids;
+}
+
+function duplicateFlowSelection(nodesToCopy = null) {
+    const ids = nodesToCopy ? null : getSelectedNodeIds();
+    const originals = nodesToCopy || currentProject.flowchart.nodes.filter(node => ids.has(node.id));
+    if (!originals.length) return;
+    const copies = originals.map(node => ({ ...structuredClone(node), id: createId("node"), x: node.x + 40, y: node.y + 40 }));
+    currentProject.flowchart.nodes.push(...copies);
+    selectedFlowNodes = new Set(copies.map(node => node.id));
+    selectedFlowNode = copies[copies.length - 1].id;
+    selectedFlowConnector = null;
+    markProjectDirty();
+    renderFlowchart();
+}
+
+function copyFlowSelection() {
+    const ids = getSelectedNodeIds();
+    copiedFlowNodes = currentProject.flowchart.nodes.filter(node => ids.has(node.id)).map(node => structuredClone(node));
+}
+
+function pasteFlowSelection() {
+    if (!copiedFlowNodes.length) return;
+    duplicateFlowSelection(copiedFlowNodes);
+    copiedFlowNodes = copiedFlowNodes.map(node => ({ ...node, x: node.x + 40, y: node.y + 40 }));
+}
+
+function alignSelectedNodes(mode) {
+    const ids = getSelectedNodeIds();
+    const nodes = currentProject.flowchart.nodes.filter(node => ids.has(node.id));
+    if (nodes.length < 2) { alert("Shift-click to select at least two shapes first."); return; }
+    const left = Math.min(...nodes.map(node => node.x));
+    const top = Math.min(...nodes.map(node => node.y));
+    const right = Math.max(...nodes.map(node => node.x + node.width));
+    const bottom = Math.max(...nodes.map(node => node.y + node.height));
+    const centerX = nodes.reduce((sum, node) => sum + node.x + node.width / 2, 0) / nodes.length;
+    const centerY = nodes.reduce((sum, node) => sum + node.y + node.height / 2, 0) / nodes.length;
+    nodes.forEach(node => {
+        if (mode === "left") node.x = left;
+        if (mode === "center-x") node.x = centerX - node.width / 2;
+        if (mode === "right") node.x = right - node.width;
+        if (mode === "top") node.y = top;
+        if (mode === "center-y") node.y = centerY - node.height / 2;
+        if (mode === "bottom") node.y = bottom - node.height;
+        if (flowSnapEnabled) { node.x = snapToGrid(node.x); node.y = snapToGrid(node.y); }
+    });
+    markProjectDirty();
+    renderFlowchart();
+}
+
+document.getElementById("flowUndoButton").addEventListener("click", undoProjectChange);
+document.getElementById("flowRedoButton").addEventListener("click", redoProjectChange);
+document.getElementById("flowDuplicateButton").addEventListener("click", () => duplicateFlowSelection());
+document.getElementById("flowAlignButton").addEventListener("click", () => alignSelectedNodes(document.getElementById("flowAlignMode").value));
+
+
+/* =========================================================
+   DELETE
+========================================================= */
+
+document
+    .getElementById(
+        "deleteFlowSelection"
+    )
+    .addEventListener(
+        "click",
+        deleteFlowSelection
+    );
+
+
+function deleteFlowSelection() {
+
+    const deleteIds = new Set(selectedFlowNodes);
+    if (selectedFlowNode) deleteIds.add(selectedFlowNode);
+
+    if (deleteIds.size) {
+        currentProject.flowchart.nodes = currentProject.flowchart.nodes.filter(node => !deleteIds.has(node.id));
+        currentProject.flowchart.connectors = currentProject.flowchart.connectors.filter(connector =>
+            !deleteIds.has(connector.from) && !deleteIds.has(connector.to)
+        );
+        selectedFlowNode = null;
+        selectedFlowNodes = new Set();
+        connectorSourceNode = null;
+        markProjectDirty();
+        renderFlowchart();
+        return;
     }
 
+
+    if (selectedFlowConnector) {
+
+        currentProject
+            .flowchart
+            .connectors =
+            currentProject
+                .flowchart
+                .connectors
+                .filter(
+                    connector =>
+                        connector.id
+                        !== selectedFlowConnector
+                );
+
+
+        selectedFlowConnector =
+            null;
+
+
+        markProjectDirty();
+
+        renderFlowchart();
+    }
+}
+
+
+function getFlowchartSvgForExport() {
+    const svg = flowchartCanvas.cloneNode(true);
+    svg.querySelectorAll(".flow-resize-handle, .connector-anchor").forEach(element => element.remove());
+    const viewport = svg.querySelector("#flowchartViewport");
+    let bounds = flowchartViewport.getBBox();
+    if (!Number.isFinite(bounds.width) || !Number.isFinite(bounds.height) || !bounds.width || !bounds.height) {
+        bounds = { x: 0, y: 0, width: Math.max(1, flowchartCanvasWrapper.clientWidth), height: Math.max(1, flowchartCanvasWrapper.clientHeight) };
+    }
+    const padding = 48;
+    const scale = Math.min(1, 2400 / (bounds.width + padding * 2), 1800 / (bounds.height + padding * 2));
+    const width = Math.max(1, Math.ceil((bounds.width + padding * 2) * scale));
+    const height = Math.max(1, Math.ceil((bounds.height + padding * 2) * scale));
+    viewport.setAttribute("transform", `translate(${(padding - bounds.x) * scale} ${(padding - bounds.y) * scale}) scale(${scale})`);
+    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svg.setAttribute("width", width);
+    svg.setAttribute("height", height);
+    svg.style.backgroundColor = "#0b1120";
+    const transient = element => element.matches(".flow-resize-handle, .connector-anchor");
+    const sourceElements = [flowchartCanvas, ...flowchartCanvas.querySelectorAll("*")].filter(element => !transient(element));
+    const targetElements = [svg, ...svg.querySelectorAll("*")];
+    const properties = ["fill", "stroke", "stroke-width", "font-size", "font-family", "text-anchor", "dominant-baseline", "marker-end", "opacity", "vector-effect", "pointer-events"];
+    sourceElements.forEach((source, index) => {
+        const computed = getComputedStyle(source);
+        const inline = properties.map(property => `${property}:${computed.getPropertyValue(property)}`).join(";");
+        targetElements[index].setAttribute("style", `${targetElements[index].getAttribute("style") || ""};${inline}`);
+    });
+    return { svg, width, height, text: new XMLSerializer().serializeToString(svg) };
+}
+
+function downloadFlowchartPng() {
+    const exported = getFlowchartSvgForExport();
+    const image = new Image();
+    const svgBlob = new Blob([exported.text], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
+    image.onload = () => {
+        const scale = 2;
+        const canvas = document.createElement("canvas");
+        canvas.width = exported.width * scale;
+        canvas.height = exported.height * scale;
+        const context = canvas.getContext("2d");
+        context.fillStyle = "#0b1120";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        const link = document.createElement("a");
+        link.download = `${(projectTitle.value.trim() || "flowchart").replace(/[^a-z0-9_-]+/gi, "-")}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+    };
+    image.onerror = () => { URL.revokeObjectURL(url); alert("The flowchart could not be exported as PNG."); };
+    image.src = url;
+}
+
+document.getElementById("flowExportPngButton").addEventListener("click", downloadFlowchartPng);
+document.getElementById("flowExportPdfButton").addEventListener("click", async () => {
+    if (!window.diPseudoFlow?.exportPdf) { alert("PDF export is not available."); return; }
+    const { text } = getFlowchartSvgForExport();
+    const result = await window.diPseudoFlow.exportPdf(text, projectTitle.value.trim() || "Flowchart");
+    if (!result?.success && !result?.canceled) alert(result?.error || "PDF export failed.");
+});
+
+document.getElementById("flowchartNodes").addEventListener("click", () => {
+    const count = getSelectedNodeIds().size;
+    document.getElementById("flowSelectionCount").textContent = `${count} selected${count > 1 ? " — Shift-click to add/remove" : ""}`;
+});
+
+
+/* =========================================================
+   KEYBOARD CONTROLS
+========================================================= */
+
+document.addEventListener(
+    "keydown",
+    event => {
+
+        /*
+           Do not delete shapes while typing.
+        */
+
+        const active =
+            document.activeElement;
+
+
+        const typing =
+            active
+            &&
+            (
+                active.tagName === "INPUT"
+                ||
+                active.tagName === "TEXTAREA"
+            );
+
+
+        if (!typing && (event.ctrlKey || event.metaKey)) {
+            const key = event.key.toLowerCase();
+            const flowchartActive = document.getElementById("flowchartWorkspace").classList.contains("active");
+            if (key === "z" && !event.shiftKey) { event.preventDefault(); undoProjectChange(); return; }
+            if (key === "y" || (key === "z" && event.shiftKey)) { event.preventDefault(); redoProjectChange(); return; }
+            if (flowchartActive && key === "c" && getSelectedNodeIds().size) { copyFlowSelection(); event.preventDefault(); return; }
+            if (flowchartActive && key === "v" && copiedFlowNodes.length) { event.preventDefault(); pasteFlowSelection(); return; }
+            if (flowchartActive && key === "d" && getSelectedNodeIds().size) { event.preventDefault(); duplicateFlowSelection(); return; }
+        }
+
+        if (
+            event.key === "Delete"
+            &&
+            !typing
+        ) {
+
+            deleteFlowSelection();
+        }
+
+
+        if (
+            event.key === "Escape"
+        ) {
+
+            closeFlowTextEditor();
+
+            selectedFlowNode = null;
+            selectedFlowNodes = new Set();
+            selectedFlowConnector = null;
+            connectorSourceNode = null;
+            connectorSourceSide = null;
+
+            setFlowTool("select");
+
+            renderFlowchart();
+        }
+    }
+);
+
+
+/* =========================================================
+   VIEW / ZOOM
+========================================================= */
+
+function updateFlowchartTransform() {
+
+    flowchartViewport.setAttribute(
+        "transform",
+        `translate(${flowPanX} ${flowPanY}) scale(${flowZoom})`
+    );
+
+    currentProject.flowchart.zoom = flowZoom;
+    currentProject.flowchart.panX = flowPanX;
+    currentProject.flowchart.panY = flowPanY;
+    flowchartCanvasWrapper.style.backgroundSize = `${20 * flowZoom}px ${20 * flowZoom}px`;
+    flowchartCanvasWrapper.style.backgroundPosition = `${flowPanX}px ${flowPanY}px`;
+
+
+    flowchartZoomText.textContent =
+        `Zoom: ${Math.round(flowZoom * 100)}%`;
+
+
+    document
+        .getElementById(
+            "flowZoomReset"
+        )
+        .textContent =
+        `${Math.round(flowZoom * 100)}%`;
+}
+
+
+function setFlowZoom(nextZoom, anchorX, anchorY) {
+    const zoom = Math.max(0.2, Math.min(2.5, nextZoom));
+    const worldX = (anchorX - flowPanX) / flowZoom;
+    const worldY = (anchorY - flowPanY) / flowZoom;
+    flowZoom = zoom;
+    flowPanX = anchorX - worldX * flowZoom;
+    flowPanY = anchorY - worldY * flowZoom;
+    markProjectDirty();
+    updateFlowchartTransform();
+}
+
+flowchartCanvasWrapper.addEventListener("wheel", event => {
+    event.preventDefault();
+    const rect = flowchartCanvasWrapper.getBoundingClientRect();
+    setFlowZoom(
+        flowZoom * Math.exp(-event.deltaY * 0.0015),
+        event.clientX - rect.left,
+        event.clientY - rect.top
+    );
+}, { passive: false });
+
+flowchartCanvasWrapper.addEventListener("pointerdown", event => {
+    if (event.button !== 1 && !(spacePanHeld && event.button === 0)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    activePan = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, panX: flowPanX, panY: flowPanY };
+    flowchartCanvasWrapper.classList.add("is-panning");
+    flowchartCanvasWrapper.setPointerCapture(event.pointerId);
+}, true);
+
+flowchartCanvasWrapper.addEventListener("pointermove", event => {
+    if (!activePan || event.pointerId !== activePan.pointerId) return;
+    flowPanX = activePan.panX + event.clientX - activePan.startX;
+    flowPanY = activePan.panY + event.clientY - activePan.startY;
+    updateFlowchartTransform();
+});
+
+function stopFlowPan(event) {
+    if (!activePan || (event && event.pointerId !== activePan.pointerId)) return;
+    const moved = flowPanX !== activePan.panX || flowPanY !== activePan.panY;
+    activePan = null;
+    flowchartCanvasWrapper.classList.remove("is-panning");
+    if (moved) markProjectDirty();
+}
+flowchartCanvasWrapper.addEventListener("pointerup", stopFlowPan);
+flowchartCanvasWrapper.addEventListener("pointercancel", stopFlowPan);
+window.addEventListener("keydown", event => {
+    const target = event.target;
+    const typing = target && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+    if (event.code === "Space" && !typing) spacePanHeld = true;
+});
+window.addEventListener("keyup", event => { if (event.code === "Space") spacePanHeld = false; });
+window.addEventListener("blur", () => { spacePanHeld = false; stopFlowPan(); });
+
+document
+    .getElementById(
+        "flowZoomIn"
+    )
+    .addEventListener(
+        "click",
+        () => {
+
+            setFlowZoom(flowZoom + 0.1, flowchartCanvasWrapper.clientWidth / 2, flowchartCanvasWrapper.clientHeight / 2);
+        }
+    );
+
+
+document
+    .getElementById(
+        "flowZoomOut"
+    )
+    .addEventListener(
+        "click",
+        () => {
+
+            setFlowZoom(flowZoom - 0.1, flowchartCanvasWrapper.clientWidth / 2, flowchartCanvasWrapper.clientHeight / 2);
+        }
+    );
+
+
+document
+    .getElementById(
+        "flowZoomReset"
+    )
+    .addEventListener(
+        "click",
+        () => {
+
+            flowZoom = 1;
+            flowPanX = 0;
+            flowPanY = 0;
+            markProjectDirty();
+            updateFlowchartTransform();
+        }
+    );
+
+
+/* =========================================================
+   FIT
+========================================================= */
+
+document
+    .getElementById(
+        "flowFit"
+    )
+    .addEventListener(
+        "click",
+        () => {
+
+            const nodes =
+                currentProject
+                    .flowchart
+                    .nodes;
+
+
+            if (!nodes.length) {
+
+                flowZoom = 1;
+                flowPanX = 0;
+                flowPanY = 0;
+
+                updateFlowchartTransform();
+
+                return;
+            }
+
+
+            let minX =
+                Infinity;
+
+            let minY =
+                Infinity;
+
+            let maxX =
+                -Infinity;
+
+            let maxY =
+                -Infinity;
+
+
+            nodes.forEach(
+                node => {
+
+                    minX =
+                        Math.min(
+                            minX,
+                            node.x
+                        );
+
+
+                    minY =
+                        Math.min(
+                            minY,
+                            node.y
+                        );
+
+
+                    maxX =
+                        Math.max(
+                            maxX,
+                            node.x +
+                            node.width
+                        );
+
+
+                    maxY =
+                        Math.max(
+                            maxY,
+                            node.y +
+                            node.height
+                        );
+                }
+            );
+
+
+            const width =
+                flowchartCanvasWrapper.clientWidth;
+
+
+            const height =
+                flowchartCanvasWrapper.clientHeight;
+
+
+            const contentWidth =
+                Math.max(
+                    1,
+                    maxX - minX
+                );
+
+
+            const contentHeight =
+                Math.max(
+                    1,
+                    maxY - minY
+                );
+
+
+            const zoomX =
+                (width - 80) /
+                contentWidth;
+
+
+            const zoomY =
+                (height - 80) /
+                contentHeight;
+
+
+            flowZoom =
+                Math.max(
+                    0.4,
+                    Math.min(
+                        2,
+                        Math.min(
+                            zoomX,
+                            zoomY
+                        )
+                    )
+                );
+
+
+            flowPanX = (width - contentWidth * flowZoom) / 2 - minX * flowZoom;
+            flowPanY = (height - contentHeight * flowZoom) / 2 - minY * flowZoom;
+            markProjectDirty();
+            updateFlowchartTransform();
+        }
+    );
+
+
+/* =========================================================
+   RESET
+========================================================= */
+
+document
+    .getElementById(
+        "flowReset"
+    )
+    .addEventListener(
+        "click",
+        () => {
+
+            flowZoom = 1;
+            flowPanX = 0;
+            flowPanY = 0;
+            updateFlowchartTransform();
+        }
+    );
+
+
+/* =========================================================
+   GRID
+========================================================= */
+
+document
+    .getElementById(
+        "flowGridToggle"
+    )
+    .addEventListener(
+        "click",
+        () => {
+
+            flowGridEnabled =
+                !flowGridEnabled;
+
+
+            flowchartCanvasWrapper.style.backgroundImage =
+                flowGridEnabled
+                ?
+                `
+                radial-gradient(
+                    circle,
+                    rgba(148, 163, 184, 0.22) 1px,
+                    transparent 1px
+                )
+                `
+                :
+                "none";
+
+
+            document
+                .getElementById(
+                    "flowGridToggle"
+                )
+                .textContent =
+                flowGridEnabled
+                ? "Grid ✓"
+                : "Grid";
+        }
+    );
+
+
+/* =========================================================
+   SNAP
+========================================================= */
+
+document
+    .getElementById(
+        "flowSnapToggle"
+    )
+    .addEventListener(
+        "click",
+        () => {
+
+            flowSnapEnabled =
+                !flowSnapEnabled;
+
+
+            document
+                .getElementById(
+                    "flowSnapToggle"
+                )
+                .textContent =
+                flowSnapEnabled
+                ? "Snap ✓"
+                : "Snap";
+        }
+    );
+
+
+/* =========================================================
+   CANVAS BACKGROUND
+========================================================= */
+
+flowchartCanvas.addEventListener(
+    "pointerdown",
+    event => {
+
+        if (
+            event.target
+            === flowchartCanvas
+            &&
+            selectedFlowTool
+            === "select"
+        ) {
+
+            selectedFlowNode =
+                null;
+
+            selectedFlowConnector =
+                null;
+
+            connectorSourceNode =
+                null;
+
+            closeFlowTextEditor();
+
+            renderFlowchart();
+        }
+    }
+);
+
+
+/* =========================================================
+   WELCOME SCREEN
+========================================================= */
+
+const welcomeScreen =
+    document.getElementById(
+        "welcomeScreen"
+    );
+
+
+const getStartedButton =
+    document.getElementById(
+        "getStartedButton"
+    );
+
+
+const dontShowWelcome =
+    document.getElementById(
+        "dontShowWelcome"
+    );
+
+
+const WELCOME_STORAGE_KEY =
+    "diPseudoFlowWelcomeShown";
+
+
+function closeWelcomeScreen() {
+
+    if (
+        dontShowWelcome.checked
+    ) {
+
+        localStorage.setItem(
+            WELCOME_STORAGE_KEY,
+            "true"
+        );
+    }
+
+
+    welcomeScreen.classList.add(
+        "welcome-hidden"
+    );
+
+
+    setTimeout(
+        () => {
+
+            welcomeScreen.style.display =
+                "none";
+
+        },
+        400
+    );
+}
+
+
+getStartedButton.addEventListener(
+    "click",
+    closeWelcomeScreen
+);
+
+
+if (
+    localStorage.getItem(
+        WELCOME_STORAGE_KEY
+    )
+    === "true"
+) {
+
+    welcomeScreen.style.display =
+        "none";
+}
+
+
+let latestReleaseNotes = "";
+
+function showUpdateStatus(title, message, progress = null) {
+    const panel = document.getElementById("updatePanel");
+    document.getElementById("updateStatusTitle").textContent = title;
+    document.getElementById("updateStatusText").textContent = message;
+    const bar = document.getElementById("updateProgress");
+    bar.hidden = progress === null;
+    if (progress !== null) bar.value = Math.max(0, Math.min(100, progress));
+    panel.hidden = false;
+}
+
+if (window.diPseudoFlow?.getVersion) {
+    window.diPseudoFlow.getVersion().then(version => {
+        document.getElementById("appVersion").textContent = version || "Unknown";
+    }).catch(() => { document.getElementById("appVersion").textContent = "Unavailable"; });
+}
+
+window.diPseudoFlow?.onUpdateStatus?.(update => {
+    if (update.releaseNotes) latestReleaseNotes = update.releaseNotes;
+    if (update.status === "checking") showUpdateStatus("Checking for updates", "Please wait…");
+    if (update.status === "available") showUpdateStatus("Update available", `Version ${update.version} is ready to download.`);
+    if (update.status === "not-available") showUpdateStatus("You’re up to date", `Current version: ${update.version || "latest"}.`);
+    if (update.status === "progress") showUpdateStatus("Downloading update", `${Number(update.percent || 0).toFixed(1)}% complete`, Number(update.percent || 0));
+    if (update.status === "downloaded") showUpdateStatus("Update ready", `Version ${update.version} is ready. Restart the app to install it.`);
+    if (update.status === "error") showUpdateStatus("Update problem", update.message || "The update check failed.");
+});
+
+document.getElementById("checkForUpdatesButton").addEventListener("click", async () => {
+    showUpdateStatus("Checking for updates", "Please wait…");
+    const result = await window.diPseudoFlow.checkForUpdates();
+    if (!result?.success) showUpdateStatus("Update problem", result?.error || "The update check failed.");
+    else if (result.releaseNotes) latestReleaseNotes = result.releaseNotes;
+});
+
+document.getElementById("showReleaseNotesButton").addEventListener("click", () => {
+    document.getElementById("releaseNotesContent").textContent = latestReleaseNotes || "No release notes have been received yet. Check for updates to load the latest notes.";
+    document.getElementById("releaseNotesDialog").showModal();
+});
+document.getElementById("closeReleaseNotesButton").addEventListener("click", () => document.getElementById("releaseNotesDialog").close());
+document.getElementById("closeUpdatePanel").addEventListener("click", () => { document.getElementById("updatePanel").hidden = true; });
+
+
+/* =========================================================
+   INITIAL PROJECT
+========================================================= */
+
+currentProject =
+    createNewProjectObject();
+
+
+ensureFlowchartStructure();
+
+
+updateProjectFieldsFromState();
+
+
+projectModifiedText.textContent =
+    "New project";
+
+
+setFlowTool("select");
 
 </script>
 
 </body>
+
 </html>
