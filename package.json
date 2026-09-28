@@ -1,0 +1,54 @@
+{
+  "name": "di-pseudoflow-logics",
+  "version": "1.0.0",
+  "description": "Di PseudoFlow Logics - Lecturer Pseudocode Runner",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win"
+  },
+  "keywords": [
+    "pseudocode",
+    "flowchart",
+    "education",
+    "programming"
+  ],
+  "author": "Horace Williams",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "electron": "^39.8.10",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.dipseudoflow.logics",
+    "productName": "Di PseudoFlow Logics",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "index.html",
+      "style.css",
+      "interpreter.js",
+      "main.js",
+      "icon.ico",
+      "logo.png"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Di PseudoFlow Logics",
+      "artifactName": "Di PseudoFlow Logics Setup ${version}.${ext}"
+    }
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  }
+}

@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Di PseudoFlow Logics</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<!-- =========================================================
+     FIRST-LAUNCH WELCOME SCREEN
+========================================================= -->
+
+<div id="welcomeScreen" class="welcome-screen">
+
+    <div class="welcome-card">
+
+        <div class="welcome-logo-area">
+
+            <img
+                src="logo.png"
+                alt="Di PseudoFlow Logics Logo"
+                class="welcome-logo"
+            >
+
+        </div>
+
+
+        <div class="welcome-content">
+
+            <div class="welcome-label">
+                WELCOME
+            </div>
+
+            <h1>
+                Di PseudoFlow Logics
+            </h1>
+
+            <p class="welcome-subtitle">
+                Your Pseudocode Learning Environment
+            </p>
+
+            <p class="welcome-description">
+                Write, test and understand pseudocode using an
+                interactive environment designed for CPRG1201.
+            </p>
+
+
+            <div class="welcome-features">
+
+                <span>Write</span>
+                <span>•</span>
+                <span>Test</span>
+                <span>•</span>
+                <span>Understand</span>
+                <span>•</span>
+                <span>Build</span>
+
+            </div>
+
+
+            <button
+                id="getStartedButton"
+                class="welcome-button"
+                type="button"
+            >
+                GET STARTED
+            </button>
+
+
+            <label class="welcome-checkbox">
+
+                <input
+                    type="checkbox"
+                    id="dontShowWelcome"
+                >
+
+                <span>
+                    Don't show this again
+                </span>
+
+            </label>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<div class="app">
+
+    <!-- =========================
+         HEADER
+    ========================== -->
+
+    <header class="app-header">
+
+        <div>
+            <h1>Di PseudoFlow Logics</h1>
+
+            <p>
+                Write, check and run your lecturer-based pseudocode
+            </p>
+        </div>
+
+        <div class="header-badge">
+            CPRG1201
+        </div>
+
+    </header>
+
+
+    <!-- =========================
+         MAIN WORKSPACE
+    ========================== -->
+
+    <main class="workspace">
+
+
+        <!-- =========================
+             CODE PANEL
+        ========================== -->
+
+        <section class="panel editor-panel">
+
+            <div class="panel-header">
+
+                <div class="panel-title">
+
+                    <span class="panel-icon">⌘</span>
+
+                    <div>
+                        <h2>Pseudocode</h2>
+
+                        <span id="lineStatus">
+                            Lines: 1
+                        </span>
+                    </div>
+
+                </div>
+
+
+                <div class="editor-status">
+                    <span class="status-dot"></span>
+                    Ready
+                </div>
+
+            </div>
+
+
+            <!-- CODE EDITOR -->
+
+            <div class="editor-wrapper">
+
+                <div
+                    id="lineNumbers"
+                    class="line-numbers"
+                    aria-hidden="true"
+                >
+                    1
+                </div>
+
+
+                <div class="code-area">
+
+                    <!-- Syntax highlighting layer -->
+
+                    <pre
+                        id="highlightLayer"
+                        class="highlight-layer"
+                        aria-hidden="true"
+                    ></pre>
+
+
+                    <!-- Actual editor -->
+
+                    <textarea
+                        id="pseudocode"
+                        spellcheck="false"
+                        autocomplete="off"
+                        autocorrect="off"
+                        autocapitalize="off"
+                        placeholder="Write your pseudocode here..."
+                    ></textarea>
+
+                </div>
+
+            </div>
+
+
+            <!-- EDITOR CONTROLS -->
+
+            <div class="button-row">
+
+                <button
+                    class="btn btn-run"
+                    onclick="runProgram()"
+                >
+                    ▶ Run
+                </button>
+
+
+                <button
+                    class="btn btn-step"
+                    onclick="runStepByStep()"
+                >
+                    ▶ Step-by-Step
+                </button>
+
+
+                <button
+                    class="btn btn-check"
+                    onclick="checkSyntax()"
+                >
+                    ✓ Check Syntax
+                </button>
+
+
+                <button
+                    class="btn btn-format"
+                    onclick="formatPseudocode()"
+                >
+                    ⇥ Format Code
+                </button>
+
+
+                <button
+                    class="btn btn-secondary"
+                    onclick="loadExample()"
+                >
+                    Load Example
+                </button>
+
+
+                <button
+                    class="btn btn-danger"
+                    onclick="clearProgram()"
+                >
+                    Clear
+                </button>
+
+            </div>
+
+
+            <div class="editor-help">
+
+                <span>
+                    <kbd>Tab</kbd> 4 spaces
+                </span>
+
+                <span>
+                    <kbd>Shift</kbd> + <kbd>Tab</kbd> Outdent
+                </span>
+
+                <span>
+                    <kbd>Enter</kbd> Auto-indent
+                </span>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- =========================
+             OUTPUT PANEL
+        ========================== -->
+
+        <section class="panel output-panel">
+
+            <div class="panel-header">
+
+                <div class="panel-title">
+
+                    <span class="panel-icon output-icon">
+                        ›_
+                    </span>
+
+                    <div>
+                        <h2>Output</h2>
+
+                        <span>
+                            Program results
+                        </span>
+                    </div>
+
+                </div>
+
+
+                <button
+                    class="clear-output"
+                    onclick="clearOutput()"
+                >
+                    Clear Output
+                </button>
+
+            </div>
+
+
+            <!-- OUTPUT -->
+
+            <div
+                id="output"
+                class="output-console"
+            ></div>
+
+
+            <!-- =========================
+                 INPUT
+            ========================== -->
+
+            <div
+                id="inputArea"
+                class="input-section"
+            >
+
+                <div class="input-title">
+
+                    <span class="input-icon">
+                        ?
+                    </span>
+
+                    <div>
+
+                        <strong>Program Input</strong>
+
+                        <p id="inputInformation">
+                            Enter a value:
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="input-row">
+
+                    <input
+                        type="text"
+                        id="userInput"
+                        placeholder="Enter value"
+                        autocomplete="off"
+                    >
+
+
+                    <button
+                        onclick="submitInput()"
+                    >
+                        Enter
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <!-- OUTPUT FOOTER -->
+
+            <div class="output-footer">
+
+                <span>
+                    Di PseudoFlow Logics
+                </span>
+
+                <span>
+                    Interpreter
+                </span>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- =========================
+         FOOTER
+    ========================== -->
+
+    <footer class="app-footer">
+
+        <span>
+            CPRG1201 • Pseudocode Practice Environment
+        </span>
+
+        <span>
+            Created by Horace Williams • Test Version 1.0
+        </span>
+
+    </footer>
+
+</div>
+
+
+<script src="interpreter.js"></script>
+
+
+<!-- =========================================================
+     WELCOME SCREEN LOGIC
+========================================================= -->
+
+<script>
+
+    const welcomeScreen = document.getElementById("welcomeScreen");
+    const getStartedButton = document.getElementById("getStartedButton");
+    const dontShowWelcome = document.getElementById("dontShowWelcome");
+
+    const WELCOME_STORAGE_KEY = "diPseudoFlowWelcomeShown";
+
+
+    function closeWelcomeScreen() {
+
+        if (dontShowWelcome.checked) {
+
+            localStorage.setItem(
+                WELCOME_STORAGE_KEY,
+                "true"
+            );
+
+        }
+
+        welcomeScreen.classList.add("welcome-hidden");
+
+        setTimeout(() => {
+
+            welcomeScreen.style.display = "none";
+
+        }, 400);
+
+    }
+
+
+    getStartedButton.addEventListener(
+        "click",
+        closeWelcomeScreen
+    );
+
+
+    /*
+       Show the welcome screen only when the user
+       has not previously dismissed it.
+    */
+
+    if (
+        localStorage.getItem(WELCOME_STORAGE_KEY)
+        === "true"
+    ) {
+
+        welcomeScreen.style.display = "none";
+
+    }
+
+
+</script>
+
+</body>
+</html>
