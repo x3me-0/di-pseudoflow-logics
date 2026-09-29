@@ -41,6 +41,54 @@
             align-items: end;
         }
 
+        .project-details-header {
+            grid-area: details-header;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            color: #e2e8f0;
+        }
+
+        .project-fields-stack {
+            grid-area: details-fields;
+            display: grid;
+            gap: 12px;
+        }
+
+        .project-workspace-bar {
+            grid-template-columns: minmax(280px, 1fr) minmax(250px, auto);
+            grid-template-areas: "details-header actions" "details-fields actions" "status status";
+            align-items: start;
+        }
+
+        .project-workspace-bar > .project-actions {
+            grid-area: actions;
+            align-self: center;
+            max-width: 480px;
+        }
+
+        .project-workspace-bar .project-status {
+            grid-area: status;
+        }
+
+        .project-workspace-bar.collapsed {
+            grid-template-areas: "details-header actions" "status status";
+        }
+
+        .project-workspace-bar.collapsed .project-fields-stack { display: none; }
+
+        @media (max-width: 850px) {
+            .project-workspace-bar,
+            .project-workspace-bar.collapsed {
+                grid-template-columns: minmax(0, 1fr);
+                grid-template-areas: "details-header" "details-fields" "actions" "status";
+            }
+            .project-workspace-bar.collapsed {
+                grid-template-areas: "details-header" "actions" "status";
+            }
+        }
+
         .project-field {
             display: flex;
             flex-direction: column;
@@ -427,6 +475,56 @@
         }
 
 
+        .flowchart-tool-palette {
+            position: absolute;
+            z-index: 6;
+            top: 12px;
+            left: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: calc(100% - 24px);
+            overflow-y: auto;
+            padding: 7px;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            background: rgba(15, 23, 42, 0.94);
+            box-shadow: 0 8px 24px #0006;
+            backdrop-filter: blur(8px);
+        }
+
+        .flow-tool.palette-tool {
+            display: grid;
+            place-items: center;
+            width: 42px;
+            min-width: 42px;
+            height: 42px;
+            min-height: 42px;
+            padding: 8px;
+        }
+
+        .palette-tool svg {
+            width: 23px;
+            height: 23px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            pointer-events: none;
+        }
+
+        .palette-tool[data-flow-tool="connector"] { cursor: crosshair !important; }
+        .route-palette-tool { color: #a5b4fc; }
+        .route-palette-tool.active { background: #3730a3; border-color: #818cf8; color: #fff; }
+        .route-palette-tool.connector-mode-active { outline: 2px solid #22d3ee; outline-offset: 2px; }
+        .flowchart-connector.flow-text-editor-wire {
+            stroke: #67e8f9; stroke-width: 3; stroke-dasharray: 3 13; stroke-linecap: round;
+            filter: drop-shadow(0 0 3px #22d3ee) drop-shadow(0 0 7px #06b6d4);
+            animation: editorWireFlow 1.1s linear infinite; pointer-events: none;
+        }
+        @keyframes editorWireFlow { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -32; } }
+
         /* =====================================================
            FLOWCHART CANVAS
         ===================================================== */
@@ -645,6 +743,11 @@
 
             stroke-width: 3;
         }
+        .flowchart-connector.connector-preview {
+            stroke: #fbbf24; stroke-width: 2.5; stroke-dasharray: 7 5;
+            opacity: .96; pointer-events: none; marker-end: url(#flowArrow);
+            filter: drop-shadow(0 0 3px #f59e0b);
+        }
 
         .flowchart-branch-label {
             fill: #cbd5e1;
@@ -769,9 +872,13 @@
                 rgba(0, 0, 0, 0.45);
         }
 
-        .flow-text-editor.visible {
-            display: block;
+        .flow-text-editor.visible { display: block; }
+        .flow-text-editor-header {
+            display: flex; align-items: center; justify-content: space-between; gap: 16px;
+            margin: -4px 0 10px; padding: 4px 2px 8px; border-bottom: 1px solid #334155;
+            color: #e2e8f0; cursor: move; user-select: none; touch-action: none;
         }
+        .flow-text-editor-header span { color: #67e8f9; letter-spacing: 2px; }
 
         .flow-text-editor label {
             display: block;
@@ -898,15 +1005,17 @@
         ===================================================== */
 
         @media (max-width: 1100px) {
-
-            .project-workspace-bar {
-                grid-template-columns: 1fr;
+            .project-workspace-bar,
+            .project-workspace-bar.collapsed {
+                grid-template-columns: minmax(0, 1fr);
+                grid-template-areas: "details-header" "details-fields" "actions" "status";
             }
-
-            .project-status {
+            .project-workspace-bar.collapsed {
+                grid-template-areas: "details-header" "actions" "status";
+            }
+            .project-workspace-bar .project-status {
                 grid-column: auto;
             }
-
         }
 
         @media (max-width: 700px) {
@@ -1050,32 +1159,20 @@
 
     <section class="project-workspace-bar">
 
-        <div class="project-field">
-
-            <label for="projectTitle">
-                Project Title
-            </label>
-
-            <input
-                type="text"
-                id="projectTitle"
-                placeholder="Enter project title..."
-                autocomplete="off"
-            >
-
+        <div class="project-details-header">
+            <strong>Project Details</strong>
+            <button type="button" class="project-action" id="projectDetailsToggle" aria-expanded="true" aria-controls="projectFieldsPanel">Collapse</button>
         </div>
 
-        <div class="project-field">
-
-            <label for="projectQuestion">
-                Assignment / Question
-            </label>
-
-            <textarea
-                id="projectQuestion"
-                placeholder="Enter the question or assignment given to you..."
-            ></textarea>
-
+        <div class="project-fields-stack" id="projectFieldsPanel">
+            <div class="project-field">
+                <label for="projectTitle">Project Name</label>
+                <input type="text" id="projectTitle" placeholder="Enter project name..." autocomplete="off">
+            </div>
+            <div class="project-field">
+                <label for="projectQuestion">Assignment / Question</label>
+                <textarea id="projectQuestion" placeholder="Enter the question or assignment given to you..."></textarea>
+            </div>
         </div>
 
         <div class="project-actions">
@@ -1159,7 +1256,7 @@
             class="workspace-tab"
             data-workspace="flowchartWorkspace"
         >
-            Manual Flowchart
+            Flowchart
         </button>
 
     </nav>
@@ -1426,87 +1523,7 @@
 
                 <div class="flowchart-toolbar-group">
 
-                    <button
-                        type="button"
-                        class="flow-tool active"
-                        data-flow-tool="select"
-                        title="Select and move shapes"
-                    >
-                        Select
-                    </button>
-
-                    <button
-                        type="button"
-                        class="flow-tool"
-                        data-flow-tool="start-end"
-                        draggable="true"
-                        title="Drag onto canvas or click then place"
-                    >
-                        Start/End
-                    </button>
-
-                    <button
-                        type="button"
-                        class="flow-tool"
-                        data-flow-tool="process"
-                        draggable="true"
-                        title="Drag onto canvas or click then place"
-                    >
-                        Process
-                    </button>
-
-                    <button
-                        type="button"
-                        class="flow-tool"
-                        data-flow-tool="input-output"
-                        draggable="true"
-                        title="Drag onto canvas or click then place"
-                    >
-                        Input/Output
-                    </button>
-
-                    <button
-                        type="button"
-                        class="flow-tool"
-                        data-flow-tool="decision"
-                        draggable="true"
-                        title="Drag onto canvas or click then place"
-                    >
-                        Decision
-                    </button>
-
-                    <button type="button" class="flow-tool" data-flow-tool="connection" draggable="true" title="Place a circle connection point">
-                        Circle / Connection
-                    </button>
-
-                </div>
-
-                <div class="flowchart-toolbar-group">
-
-                    <button
-                        type="button"
-                        class="flow-tool"
-                        data-flow-tool="connector"
-                        title="Choose a source point, then a destination point"
-                    >
-                        Connector
-                    </button>
-
-                    <label class="sr-only" for="flowConnectorRoute">Connector line style</label>
-                    <select id="flowConnectorRoute" class="flow-connector-route" title="Choose the line style for new connectors">
-                        <option value="straight">Straight line</option>
-                        <option value="orthogonal">Orthogonal line</option>
-                    </select>
-
-                    <button
-                        type="button"
-                        class="flow-tool"
-                        data-flow-tool="text"
-                        draggable="true"
-                        title="Drag onto canvas or click then place"
-                    >
-                        Text
-                    </button>
+                    <input type="hidden" id="flowConnectorRoute" value="straight">
 
                     <button
                         type="button"
@@ -1608,6 +1625,36 @@
                 class="flowchart-canvas-wrapper"
             >
 
+                <div class="flowchart-tool-palette" role="toolbar" aria-label="Flowchart tools">
+                    <button type="button" class="flow-tool palette-tool active" data-flow-tool="select" title="Select and move" aria-label="Select and move">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l13 11-6 1-3 6z" fill="currentColor" stroke="currentColor" stroke-linejoin="round"/></svg>
+                    </button>
+                    <button type="button" class="flow-tool palette-tool" data-flow-tool="start-end" draggable="true" title="Start / End" aria-label="Start or End">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="6"/></svg>
+                    </button>
+                    <button type="button" class="flow-tool palette-tool" data-flow-tool="process" draggable="true" title="Process" aria-label="Process">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="1"/></svg>
+                    </button>
+                    <button type="button" class="flow-tool palette-tool" data-flow-tool="input-output" draggable="true" title="Input / Output" aria-label="Input or Output">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h15l-5 15H2z"/></svg>
+                    </button>
+                    <button type="button" class="flow-tool palette-tool" data-flow-tool="decision" draggable="true" title="Decision" aria-label="Decision">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 22 12 12 21.5 2 12z"/></svg>
+                    </button>
+                    <button type="button" class="flow-tool palette-tool" data-flow-tool="connection" draggable="true" title="Circle / Connection" aria-label="Circle connection point">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg>
+                    </button>
+                    <button type="button" class="flow-tool palette-tool route-palette-tool active" data-connector-route="straight" title="Straight connector" aria-label="Straight connector line">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18 20 6"/><path d="m16 6 4 0 0 4"/></svg>
+                    </button>
+                    <button type="button" class="flow-tool palette-tool route-palette-tool" data-connector-route="orthogonal" title="Orthogonal connector" aria-label="Orthogonal connector line">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h7V5h9"/><path d="m16 2 4 3-4 3"/></svg>
+                    </button>
+                    <button type="button" class="flow-tool palette-tool" data-flow-tool="text" draggable="true" title="Text box" aria-label="Text box">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M12 5v14M8 19h8"/><path d="M8 5h8"/></svg>
+                    </button>
+                </div>
+
                 <div
                     id="flowchartEmptyMessage"
                     class="flowchart-empty-message"
@@ -1669,9 +1716,11 @@
                     class="flow-text-editor"
                 >
 
-                    <label>
-                        Shape Text
-                    </label>
+                    <div class="flow-text-editor-header" id="flowTextEditorHeader" title="Drag to move this editor">
+                        <strong>Edit Shape</strong>
+                        <span>⋮⋮</span>
+                    </div>
+                    <label for="flowTextInput">Shape Text</label>
 
                     <textarea
                         id="flowTextInput"
@@ -2005,6 +2054,24 @@ function ensureFlowchartStructure() {
 }
 
 
+function createWorkStamp(seed = "") {
+    let hash = 2166136261;
+    const value = `${seed}-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+    for (let i = 0; i < value.length; i += 1) {
+        hash ^= value.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+    }
+    return `DPF-${(hash >>> 0).toString(36).toUpperCase().padStart(7, "0")}`;
+}
+
+function ensureWorkStamp(project = currentProject) {
+    if (!project.workStamp) {
+        const stableSeed = project.id || project.created || `${project.title || "work"}-${Date.now()}`;
+        project.workStamp = createWorkStamp(stableSeed);
+    }
+    return project.workStamp;
+}
+
 function createNewProjectObject() {
 
     const now =
@@ -2023,6 +2090,8 @@ function createNewProjectObject() {
             document.getElementById(
                 "pseudocode"
             )?.value || "",
+
+        workStamp: createWorkStamp(now),
 
         flowchart: {
 
@@ -2100,6 +2169,7 @@ function updateProjectStatus() {
 function updateProjectFieldsFromState({ resetHistory = true } = {}) {
 
     ensureFlowchartStructure();
+    ensureWorkStamp(currentProject);
 
 
     projectTitle.value =
@@ -2292,6 +2362,7 @@ async function saveCurrentProject() {
     }
 
 
+    ensureWorkStamp(currentProject);
     currentProject.modified =
         new Date().toISOString();
 
@@ -2344,6 +2415,7 @@ async function saveProjectAs() {
     currentProject.id = null;
     currentProject.created = null;
     currentProject.modified = null;
+    currentProject.workStamp = createWorkStamp(Date.now());
     projectTitle.value = title.trim();
     currentProject.title = title.trim();
     projectDirty = true;
@@ -2651,6 +2723,19 @@ function formatProjectDate(dateValue) {
 /* =========================================================
    PROJECT EVENTS
 ========================================================= */
+
+const projectDetailsBar = document.querySelector(".project-workspace-bar");
+const projectDetailsToggle = document.getElementById("projectDetailsToggle");
+function setProjectDetailsCollapsed(collapsed) {
+    projectDetailsBar.classList.toggle("collapsed", collapsed);
+    projectDetailsToggle.setAttribute("aria-expanded", String(!collapsed));
+    projectDetailsToggle.textContent = collapsed ? "Expand" : "Collapse";
+    localStorage.setItem("diPseudoFlowProjectDetailsCollapsed", String(collapsed));
+}
+projectDetailsToggle.addEventListener("click", () => {
+    setProjectDetailsCollapsed(!projectDetailsBar.classList.contains("collapsed"));
+});
+setProjectDetailsCollapsed(localStorage.getItem("diPseudoFlowProjectDetailsCollapsed") === "true");
 
 projectTitle.addEventListener(
     "input",
@@ -3738,11 +3823,41 @@ function getNodeAnchorPositions(node) {
     const right = node.x + node.width;
     const top = node.y;
     const bottom = node.y + node.height;
+    const middleX = node.x + node.width / 2;
+    const middleY = node.y + node.height / 2;
+
+    // Put anchors on each symbol's visible outline, not its rectangular bounds.
+    if (node.type === "decision") {
+        return {
+            top: { x: middleX, y: top },
+            right: { x: right, y: middleY },
+            bottom: { x: middleX, y: bottom },
+            left: { x: left, y: middleY }
+        };
+    }
+    if (node.type === "connection") {
+        const radius = Math.min(node.width, node.height) / 2;
+        return {
+            top: { x: middleX, y: middleY - radius },
+            right: { x: middleX + radius, y: middleY },
+            bottom: { x: middleX, y: middleY + radius },
+            left: { x: middleX - radius, y: middleY }
+        };
+    }
+    if (node.type === "input-output") {
+        const skew = Math.min(30, node.width * 0.18);
+        return {
+            top: { x: middleX + skew / 2, y: top },
+            right: { x: right - skew / 2, y: middleY },
+            bottom: { x: middleX - skew / 2, y: bottom },
+            left: { x: left + skew / 2, y: middleY }
+        };
+    }
     return {
-        top: { x: node.x + node.width / 2, y: top },
-        right: { x: right, y: node.y + node.height / 2 },
-        bottom: { x: node.x + node.width / 2, y: bottom },
-        left: { x: left, y: node.y + node.height / 2 }
+        top: { x: middleX, y: top },
+        right: { x: right, y: middleY },
+        bottom: { x: middleX, y: bottom },
+        left: { x: left, y: middleY }
     };
 }
 
@@ -3924,20 +4039,19 @@ function setFlowTool(
         )
         .forEach(
             button => {
-
-                button.classList.toggle(
-                    "active",
-                    button.dataset.flowTool
-                    === tool
-                );
+                button.classList.toggle("active", button.dataset.flowTool === tool);
             }
         );
+    document.querySelectorAll("[data-connector-route]").forEach(button => {
+        button.classList.toggle("active", button.dataset.connectorRoute === document.getElementById("flowConnectorRoute").value);
+        button.classList.toggle("connector-mode-active", tool === "connector" && button.dataset.connectorRoute === document.getElementById("flowConnectorRoute").value);
+    });
 
-
-    flowchartCanvasWrapper.style.cursor =
-        tool === "connector"
-        ? "crosshair"
-        : "default";
+    flowchartCanvasWrapper.style.cursor = tool === "connector" ? "crosshair" : "default";
+    if (tool !== "connector") {
+        const preview = flowchartConnectors.querySelector(".connector-preview");
+        if (preview) preview.remove();
+    }
 
 
     document
@@ -4171,6 +4285,22 @@ flowchartCanvas.addEventListener(
 );
 
 
+// The floating palette is the quick route selector; keep the legacy dropdown synchronized.
+document.querySelectorAll("[data-connector-route]").forEach(button => {
+    button.addEventListener("click", () => {
+        document.getElementById("flowConnectorRoute").value = button.dataset.connectorRoute;
+        connectorSourceNode = null;
+        connectorSourceSide = null;
+        setFlowTool("connector");
+    });
+});
+document.getElementById("flowConnectorRoute").addEventListener("change", event => {
+    document.querySelectorAll("[data-connector-route]").forEach(button => {
+        button.classList.toggle("active", button.dataset.connectorRoute === event.target.value);
+    });
+    setFlowTool("connector");
+});
+
 /* =========================================================
    ADD NODE
 ========================================================= */
@@ -4321,14 +4451,10 @@ function stopNodeDrag() {
     }
 
 
-    if (activeDrag.moved) {
-
-        markProjectDirty();
-    }
-
-
-    activeDrag =
-        null;
+    if (activeDrag.moved) markProjectDirty();
+    const shouldRender = activeDrag.moved;
+    activeDrag = null;
+    if (shouldRender) renderFlowchart();
 
 
     window.removeEventListener(
@@ -4631,9 +4757,7 @@ function handleResizeMove(
 
 
 function stopResize() {
-
-    activeResize =
-        null;
+    activeResize = null;
 
 
     window.removeEventListener(
@@ -4646,6 +4770,66 @@ function stopResize() {
 /* =========================================================
    TEXT EDITING
 ========================================================= */
+
+function renderFlowTextEditorWire() {
+    let wire = flowchartConnectors.querySelector(".flow-text-editor-wire");
+    if (!editingNodeId || !flowTextEditor.classList.contains("visible")) {
+        if (wire) wire.remove();
+        return;
+    }
+    const node = getNodeById(editingNodeId);
+    if (!node) { if (wire) wire.remove(); return; }
+    if (!wire) {
+        wire = document.createElementNS(SVG_NS, "path");
+        wire.classList.add("flowchart-connector", "flow-text-editor-wire");
+        flowchartConnectors.appendChild(wire);
+    }
+    const rect = flowTextEditor.getBoundingClientRect();
+    const topLeft = getCanvasPoint(rect.left, rect.top);
+    const bottomRight = getCanvasPoint(rect.right, rect.bottom);
+    const editorCenter = { x: (topLeft.x + bottomRight.x) / 2, y: (topLeft.y + bottomRight.y) / 2 };
+    const nodeCenter = { x: node.x + node.width / 2, y: node.y + node.height / 2 };
+    const dx = editorCenter.x - nodeCenter.x;
+    const dy = editorCenter.y - nodeCenter.y;
+    const side = Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? "right" : "left") : (dy >= 0 ? "bottom" : "top");
+    const start = getNodeAnchorPositions(node)[side];
+    let end;
+    if (side === "right") end = { x: topLeft.x, y: editorCenter.y };
+    else if (side === "left") end = { x: bottomRight.x, y: editorCenter.y };
+    else if (side === "bottom") end = { x: editorCenter.x, y: topLeft.y };
+    else end = { x: editorCenter.x, y: bottomRight.y };
+    const normals = { left: {x:-1,y:0}, right: {x:1,y:0}, top: {x:0,y:-1}, bottom: {x:0,y:1} };
+    const normal = normals[side];
+    const bend = Math.max(26, Math.min(90, Math.hypot(end.x - start.x, end.y - start.y) * 0.35));
+    const c1 = { x: start.x + normal.x * bend, y: start.y + normal.y * bend };
+    const c2 = { x: end.x - normal.x * bend, y: end.y - normal.y * bend };
+    wire.setAttribute("d", "M " + start.x + " " + start.y + " C " + c1.x + " " + c1.y + ", " + c2.x + " " + c2.y + ", " + end.x + " " + end.y);
+}
+
+let flowTextEditorDrag = null;
+const flowTextEditorHeader = document.getElementById("flowTextEditorHeader");
+flowTextEditorHeader.addEventListener("pointerdown", event => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const rect = flowTextEditor.getBoundingClientRect();
+    const wrapperRect = flowchartCanvasWrapper.getBoundingClientRect();
+    flowTextEditorDrag = {
+        startX: event.clientX, startY: event.clientY,
+        left: rect.left - wrapperRect.left, top: rect.top - wrapperRect.top
+    };
+    flowTextEditorHeader.setPointerCapture?.(event.pointerId);
+});
+window.addEventListener("pointermove", event => {
+    if (!flowTextEditorDrag) return;
+    const wrapperRect = flowchartCanvasWrapper.getBoundingClientRect();
+    const maxLeft = Math.max(0, wrapperRect.width - flowTextEditor.offsetWidth);
+    const maxTop = Math.max(0, wrapperRect.height - flowTextEditor.offsetHeight);
+    flowTextEditor.style.left = Math.max(0, Math.min(maxLeft, flowTextEditorDrag.left + event.clientX - flowTextEditorDrag.startX)) + "px";
+    flowTextEditor.style.top = Math.max(0, Math.min(maxTop, flowTextEditorDrag.top + event.clientY - flowTextEditorDrag.startY)) + "px";
+    renderFlowTextEditorWire();
+});
+window.addEventListener("pointerup", () => { flowTextEditorDrag = null; });
+window.addEventListener("resize", renderFlowTextEditorWire);
 
 function openFlowTextEditor(
     node
@@ -4673,19 +4857,9 @@ function openFlowTextEditor(
             .getBoundingClientRect();
 
 
-    const screenX =
-        canvasRect.left +
-        (
-            node.x +
-            node.width
-        ) *
-        flowZoom;
-
-
-    const screenY =
-        canvasRect.top +
-        node.y *
-        flowZoom;
+    const anchor = getNodeAnchorPositions(node).right;
+    const screenX = canvasRect.left + flowPanX + anchor.x * flowZoom;
+    const screenY = canvasRect.top + flowPanY + anchor.y * flowZoom;
 
 
     let left =
@@ -4728,10 +4902,8 @@ function openFlowTextEditor(
         ) + "px";
 
 
-    flowTextEditor.classList.add(
-        "visible"
-    );
-
+    flowTextEditor.classList.add("visible");
+    renderFlowTextEditorWire();
 
     setTimeout(
         () => {
@@ -4752,9 +4924,9 @@ function closeFlowTextEditor() {
         null;
 
 
-    flowTextEditor.classList.remove(
-        "visible"
-    );
+    flowTextEditor.classList.remove("visible");
+    const wire = flowchartConnectors.querySelector(".flow-text-editor-wire");
+    if (wire) wire.remove();
 }
 
 
@@ -5032,6 +5204,7 @@ function handleConnectorNodeClick(
         to:
             node.id,
 
+        route: document.getElementById("flowConnectorRoute").value,
         label
     };
 
@@ -5177,60 +5350,139 @@ function getConnectionPoint(
        For horizontal relationships, use left/right.
     */
 
-    if (
-        Math.abs(dx)
-        >
-        Math.abs(dy)
-    ) {
-
-        return {
-
-            x:
-                dx >= 0
-                ? node.x + node.width
-                : node.x,
-
-            y:
-                sourceCenterY
-        };
-    }
-
-
-    return {
-
-        x:
-            sourceCenterX,
-
-        y:
-            dy >= 0
-            ? node.y + node.height
-            : node.y
-    };
+    const selectedSide = Math.abs(dx) > Math.abs(dy)
+        ? (dx >= 0 ? "right" : "left")
+        : (dy >= 0 ? "bottom" : "top");
+    return getNodeAnchorPositions(node)[selectedSide];
 }
 
 function getConnectorGeometry(connector, from, to) {
-    const start = getConnectionPoint(from, to, connector.fromSide || "auto");
-    const end = getConnectionPoint(to, from, connector.toSide || "auto");
+    const fromCenter = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
+    const toCenter = { x: to.x + to.width / 2, y: to.y + to.height / 2 };
+    const autoFrom = Math.abs(toCenter.x - fromCenter.x) > Math.abs(toCenter.y - fromCenter.y)
+        ? (toCenter.x >= fromCenter.x ? "right" : "left")
+        : (toCenter.y >= fromCenter.y ? "bottom" : "top");
+    const autoTo = Math.abs(fromCenter.x - toCenter.x) > Math.abs(fromCenter.y - toCenter.y)
+        ? (fromCenter.x >= toCenter.x ? "right" : "left")
+        : (fromCenter.y >= toCenter.y ? "bottom" : "top");
+    const fromSide = connector.fromSide && connector.fromSide !== "auto" ? connector.fromSide : autoFrom;
+    const toSide = connector.toSide && connector.toSide !== "auto" ? connector.toSide : autoTo;
+    const start = getNodeAnchorPositions(from)[fromSide];
+    const targetAnchor = getNodeAnchorPositions(to)[toSide];
+    const normals = { left: { x: -1, y: 0 }, right: { x: 1, y: 0 }, top: { x: 0, y: -1 }, bottom: { x: 0, y: 1 } };
+    const clearance = to.id === "__connector_preview__" ? 0 : (connector.route === "orthogonal" ? 10 : 8);
+    const normal = normals[toSide];
+    // Leave a small visible gap before the arrow tip so it reads as connected, not welded into the shape.
+    const end = { x: targetAnchor.x + normal.x * clearance, y: targetAnchor.y + normal.y * clearance };
     if (connector.route === "orthogonal") {
-        let d;
-        if (["left", "right"].includes(connector.fromSide || "auto")) {
-            const middleX = (start.x + end.x) / 2;
-            d = `M ${start.x} ${start.y} H ${middleX} V ${end.y} H ${end.x}`;
-        } else {
-            const middleY = (start.y + end.y) / 2;
-            d = `M ${start.x} ${start.y} V ${middleY} H ${end.x} V ${end.y}`;
-        }
-        const horizontalFirst = ["left", "right"].includes(connector.fromSide || "auto");
-        return {
-            start,
-            end,
-            d,
-            labelX: (start.x + end.x) / 2 + 5,
-            labelY: (start.y + end.y) / 2 - 6
+        const fromNormal = normals[fromSide];
+        const lead = 26;
+        const startLead = { x: start.x + fromNormal.x * lead, y: start.y + fromNormal.y * lead };
+        const endLead = { x: end.x + normal.x * lead, y: end.y + normal.y * lead };
+        const obstacles = currentProject.flowchart.nodes
+            .filter(node => node.id !== from.id && node.id !== to.id)
+            .map(node => ({ left: node.x - 20, right: node.x + node.width + 20, top: node.y - 20, bottom: node.y + node.height + 20 }));
+        const xs = [...new Set([startLead.x, endLead.x, (startLead.x + endLead.x) / 2, ...obstacles.flatMap(rect => [rect.left, rect.right])])].sort((a,b) => a-b);
+        const ys = [...new Set([startLead.y, endLead.y, (startLead.y + endLead.y) / 2, ...obstacles.flatMap(rect => [rect.top, rect.bottom])])].sort((a,b) => a-b);
+        const sx = xs.indexOf(startLead.x), ex = xs.indexOf(endLead.x);
+        const sy = ys.indexOf(startLead.y), ey = ys.indexOf(endLead.y);
+        const pointBlocked = (x,y) => obstacles.some(rect => x > rect.left && x < rect.right && y > rect.top && y < rect.bottom);
+        const segmentBlocked = (x1,y1,x2,y2) => obstacles.some(rect => {
+            if (x1 === x2) return x1 > rect.left && x1 < rect.right && Math.max(Math.min(y1,y2),rect.top) < Math.min(Math.max(y1,y2),rect.bottom);
+            if (y1 === y2) return y1 > rect.top && y1 < rect.bottom && Math.max(Math.min(x1,x2),rect.left) < Math.min(Math.max(x1,x2),rect.right);
+            return true;
+        });
+        const keyOf = (ix,iy,dir) => ix + "," + iy + "," + dir;
+        const heap = [];
+        const heapPush = state => {
+            heap.push(state); let i=heap.length-1;
+            while(i>0){const p=Math.floor((i-1)/2);if(heap[p].f<=state.f)break;heap[i]=heap[p];i=p;}
+            heap[i]=state;
         };
+        const heapPop = () => {
+            if(!heap.length)return null;
+            const root=heap[0], tail=heap.pop();
+            if(heap.length){let i=0;while(true){let child=i*2+1;if(child>=heap.length)break;if(child+1<heap.length&&heap[child+1].f<heap[child].f)child++;if(heap[child].f>=tail.f)break;heap[i]=heap[child];i=child;}heap[i]=tail;}
+            return root;
+        };
+        const startKey=keyOf(sx,sy,"n"), costs=new Map([[startKey,0]]), parents=new Map();
+        heapPush({ix:sx,iy:sy,dir:"n",g:0,f:Math.abs(startLead.x-endLead.x)+Math.abs(startLead.y-endLead.y),key:startKey});
+        let finish=null;
+        while(heap.length){
+            const current=heapPop();
+            if(current.g!==costs.get(current.key))continue;
+            if(current.ix===ex&&current.iy===ey){finish=current;break;}
+            const moves=[[current.ix-1,current.iy,"h"],[current.ix+1,current.iy,"h"],[current.ix,current.iy-1,"v"],[current.ix,current.iy+1,"v"]];
+            for(const [ix,iy,dir] of moves){
+                if(ix<0||iy<0||ix>=xs.length||iy>=ys.length)continue;
+                const x1=xs[current.ix],y1=ys[current.iy],x2=xs[ix],y2=ys[iy];
+                if(pointBlocked(x2,y2)||segmentBlocked(x1,y1,x2,y2))continue;
+                const nextKey=keyOf(ix,iy,dir), step=Math.abs(x2-x1)+Math.abs(y2-y1)+(current.dir!=="n"&&current.dir!==dir?32:0), nextCost=current.g+step;
+                if(nextCost>=(costs.get(nextKey)??Infinity))continue;
+                costs.set(nextKey,nextCost);parents.set(nextKey,current.key);
+                const heuristic=Math.abs(x2-endLead.x)+Math.abs(y2-endLead.y);
+                heapPush({ix,iy,dir,g:nextCost,f:nextCost+heuristic,key:nextKey});
+            }
+        }
+        let points;
+        if(finish){
+            const reverse=[];let cursor=finish.key;
+            while(cursor){const [ix,iy]=cursor.split(",");reverse.push({x:xs[Number(ix)],y:ys[Number(iy)]});cursor=parents.get(cursor);}
+            reverse.reverse();
+            points=[start,startLead,...reverse.slice(1,-1),endLead,end];
+        }else{
+            points=[start,startLead,{x:endLead.x,y:startLead.y},endLead,end];
+        }
+        points=points.filter((point,index)=>index===0||point.x!==points[index-1].x||point.y!==points[index-1].y);
+        const d=points.map((point,index)=>(index?"L ":"M ")+point.x+" "+point.y).join(" ");
+        return { start, end, d, labelX: (start.x + end.x) / 2 + 5, labelY: (start.y + end.y) / 2 - 6 };
     }
     return { start, end, labelX: (start.x + end.x) / 2 + 5, labelY: (start.y + end.y) / 2 - 5 };
 }
+
+
+function updateConnectorPreview(event) {
+    let preview = flowchartConnectors.querySelector(".connector-preview");
+    if (selectedFlowTool !== "connector" || !connectorSourceNode) {
+        if (preview) preview.remove();
+        return;
+    }
+    const source = getNodeById(connectorSourceNode);
+    if (!source) { if (preview) preview.remove(); return; }
+    const pointer = getCanvasPoint(event.clientX, event.clientY);
+    let target = null;
+    let targetDistance = Infinity;
+    currentProject.flowchart.nodes.forEach(node => {
+        if (node.id === source.id) return;
+        const nearX = Math.max(node.x - 16, Math.min(pointer.x, node.x + node.width + 16));
+        const nearY = Math.max(node.y - 16, Math.min(pointer.y, node.y + node.height + 16));
+        const distance = Math.hypot(pointer.x - nearX, pointer.y - nearY);
+        if (distance <= 22 && distance < targetDistance) { target = node; targetDistance = distance; }
+    });
+    let toSide = "auto";
+    let to = {
+        id: "__connector_preview__", type: "connection", x: pointer.x, y: pointer.y,
+        width: 0, height: 0
+    };
+    if (target) {
+        to = target;
+        const anchors = getNodeAnchorPositions(target);
+        toSide = Object.entries(anchors).sort((a,b) =>
+            Math.hypot(a[1].x - pointer.x, a[1].y - pointer.y) - Math.hypot(b[1].x - pointer.x, b[1].y - pointer.y)
+        )[0][0];
+    }
+    const route = document.getElementById("flowConnectorRoute").value;
+    const geometry = getConnectorGeometry({ fromSide: connectorSourceSide || "auto", toSide, route }, source, to);
+    if (!preview) {
+        preview = document.createElementNS(SVG_NS, "path");
+        preview.classList.add("flowchart-connector", "connector-preview");
+        flowchartConnectors.appendChild(preview);
+    }
+    const d = route === "orthogonal" ? geometry.d : "M " + geometry.start.x + " " + geometry.start.y + " L " + geometry.end.x + " " + geometry.end.y;
+    preview.setAttribute("d", d);
+}
+
+flowchartCanvasWrapper.addEventListener("pointermove", updateConnectorPreview);
 
 
 /* =========================================================
@@ -5241,6 +5493,8 @@ function renderFlowConnectors() {
 
     ensureFlowchartStructure();
 
+
+    renderFlowTextEditorWire();
 
     currentProject
         .flowchart
@@ -5384,6 +5638,8 @@ function renderFlowConnectors() {
 ========================================================= */
 
 function updateAllConnectorGeometry() {
+
+    renderFlowTextEditorWire();
 
     const lines =
         flowchartConnectors
@@ -5669,7 +5925,7 @@ function deleteFlowSelection() {
 
 function getFlowchartSvgForExport() {
     const svg = flowchartCanvas.cloneNode(true);
-    svg.querySelectorAll(".flow-resize-handle, .connector-anchor").forEach(element => element.remove());
+    svg.querySelectorAll(".flow-resize-handle, .connector-anchor, .flow-text-editor-wire").forEach(element => element.remove());
     const viewport = svg.querySelector("#flowchartViewport");
     let bounds = flowchartViewport.getBBox();
     if (!Number.isFinite(bounds.width) || !Number.isFinite(bounds.height) || !bounds.width || !bounds.height) {
@@ -5684,10 +5940,19 @@ function getFlowchartSvgForExport() {
     svg.setAttribute("width", width);
     svg.setAttribute("height", height);
     svg.style.backgroundColor = "#0b1120";
+    const stamp = document.createElementNS(SVG_NS, "text");
+    stamp.setAttribute("x", String(width / 2));
+    stamp.setAttribute("y", String(height - 14));
+    stamp.setAttribute("text-anchor", "middle");
+    stamp.setAttribute("font-size", "10");
+    stamp.setAttribute("font-family", "Arial, sans-serif");
+    stamp.setAttribute("fill", "#94a3b8");
+    stamp.textContent = `Di PseudoFlow Logics • ${projectTitle.value.trim() || "Untitled Project"} • Work ID ${ensureWorkStamp()} • Exported ${new Date().toLocaleString()}`;
+    svg.appendChild(stamp);
     const transient = element => element.matches(".flow-resize-handle, .connector-anchor");
     const sourceElements = [flowchartCanvas, ...flowchartCanvas.querySelectorAll("*")].filter(element => !transient(element));
     const targetElements = [svg, ...svg.querySelectorAll("*")];
-    const properties = ["fill", "stroke", "stroke-width", "font-size", "font-family", "text-anchor", "dominant-baseline", "marker-end", "opacity", "vector-effect", "pointer-events"];
+    const properties = ["fill", "stroke", "stroke-width", "font-size", "font-family", "text-anchor", "dominant-baseline", "marker-end", "opacity", "vector-effect", "pointer-events", "stroke-dasharray", "stroke-dashoffset", "stroke-linecap", "filter"];
     sourceElements.forEach((source, index) => {
         const computed = getComputedStyle(source);
         const inline = properties.map(property => `${property}:${computed.getPropertyValue(property)}`).join(";");
@@ -5828,6 +6093,7 @@ function updateFlowchartTransform() {
         )
         .textContent =
         `${Math.round(flowZoom * 100)}%`;
+    renderFlowTextEditorWire();
 }
 
 
