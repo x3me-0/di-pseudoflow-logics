@@ -1615,10 +1615,15 @@ function evaluateExpression(
     }
 
 
-    const unknown =
-        expression.match(
-            /\b[A-Za-z_][A-Za-z0-9_]*\b/
-        );
+    // Ignore words inside quoted strings while checking for undeclared names.
+    const expressionWithoutStrings = expression.replace(
+        /"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g,
+        " "
+    );
+
+    const unknown = expressionWithoutStrings.match(
+        /\b[A-Za-z_][A-Za-z0-9_]*\b/
+    );
 
 
     if (
@@ -1645,19 +1650,77 @@ function evaluateExpression(
     }
 
 
+    // Parse arithmetic directly instead of using Function/eval. Electron's
+    // Content Security Policy intentionally blocks dynamic code execution.
+    const tokenPattern = /^\s*(?:(\d+(?:\.\d*)?|\.\d+)(?:([eE][+-]?\d+))?|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|([()+\-*/%]))/;
+    const tokens = [];
+    let remaining = expression;
+
+    while (remaining.trim() !== "") {
+        const match = remaining.match(tokenPattern);
+        if (!match) throw new Error("Invalid expression.");
+
+        if (match[1] !== undefined) {
+            tokens.push({ type: "number", value: Number(match[1] + (match[2] || "")) });
+        } else if (match[3] !== undefined) {
+            const raw = match[3];
+            let value;
+            if (raw[0] === '"') {
+                try { value = JSON.parse(raw); } catch (_) { throw new Error("Invalid expression."); }
+            } else {
+                value = raw.slice(1, -1).replace(/\\([\\'])/g, "$1");
+            }
+            tokens.push({ type: "string", value });
+        } else {
+            tokens.push({ type: "operator", value: match[4] });
+        }
+        remaining = remaining.slice(match[0].length);
+    }
+
+    let position = 0;
+    function parsePrimary() {
+        const token = tokens[position++];
+        if (!token) throw new Error("Invalid expression.");
+        if (token.type === "number" || token.type === "string") return token.value;
+        if (token.value === "+") return +parsePrimary();
+        if (token.value === "-") return -parsePrimary();
+        if (token.value === "(") {
+            const value = parseAddition();
+            if (tokens[position++]?.value !== ")") throw new Error("Invalid expression.");
+            return value;
+        }
+        throw new Error("Invalid expression.");
+    }
+    function parseMultiplication() {
+        let value = parsePrimary();
+        while (["*", "/", "%"].includes(tokens[position]?.value)) {
+            const operator = tokens[position++].value;
+            const right = parsePrimary();
+            if (typeof value === "string" || typeof right === "string") throw new Error("Invalid expression.");
+            if (operator === "*") value *= right;
+            else if (operator === "/") value /= right;
+            else value %= right;
+        }
+        return value;
+    }
+    function parseAddition() {
+        let value = parseMultiplication();
+        while (["+", "-"].includes(tokens[position]?.value)) {
+            const operator = tokens[position++].value;
+            const right = parseMultiplication();
+            if (operator === "+" && (typeof value === "string" || typeof right === "string")) value = String(value) + String(right);
+            else if (operator === "+") value += right;
+            else value -= right;
+        }
+        return value;
+    }
+
     try {
-
-        return Function(
-            '"use strict"; return (' +
-            expression +
-            ')'
-        )();
-
-    } catch (error) {
-
-        throw new Error(
-            "Invalid expression."
-        );
+        const result = parseAddition();
+        if (position !== tokens.length) throw new Error("Invalid expression.");
+        return result;
+    } catch (_) {
+        throw new Error("Invalid expression.");
     }
 }
 

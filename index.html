@@ -1052,6 +1052,20 @@
         .dashboard-page,.settings-page { display:none; padding:28px clamp(18px,4vw,58px) 48px; min-height:65vh; }
         /* Welcome is temporarily disabled; guest/profile startup now opens Home directly. */
         #welcomeScreen { display:none !important; }
+        /* Keep the pseudocode and result panes bounded; long content scrolls inside each pane. */
+        .workspace { height:auto; min-height:clamp(560px,calc(100vh - 360px),760px); flex:none; }
+        .workspace .editor-panel,.workspace .output-panel { height:clamp(560px,calc(100vh - 360px),760px); min-height:0; }
+        .workspace .editor-wrapper,.workspace .output-console { flex:1 1 auto; height:0; min-height:0; }
+        .workspace .editor-wrapper { overflow:hidden; }
+        .workspace .output-console { overflow-y:auto; }
+        @media (max-width:1000px) {
+          .workspace { height:auto; min-height:0; }
+          .workspace .editor-panel,.workspace .output-panel { height:600px; min-height:0; }
+        }
+        .panel-resize-handle { flex:0 0 15px; display:flex; align-items:center; justify-content:center; width:100%; margin:0; padding:0; border:0; background:transparent; cursor:ns-resize; touch-action:none; }
+        .panel-resize-handle span { width:46px; height:4px; border-radius:5px; background:#475569; transition:background .15s, width .15s; }
+        .panel-resize-handle:hover span,.panel-resize-handle:focus-visible span { width:64px; background:#818cf8; }
+        body.panel-resizing,body.panel-resizing * { cursor:ns-resize !important; user-select:none !important; }
         .dashboard-page { position:relative; isolation:isolate; }
         #dashboardPage::before { content:""; position:absolute; z-index:0; pointer-events:none; right:clamp(24px,8vw,110px); top:50%; transform:translateY(-50%); width:min(38vw,390px); aspect-ratio:1; background:url("logo.png") center / contain no-repeat; opacity:.09; }
         #dashboardPage > * { position:relative; z-index:1; }
@@ -1206,6 +1220,7 @@
 <div
     id="welcomeScreen"
     class="welcome-screen"
+    hidden
 >
 
     <div class="welcome-card">
@@ -1638,6 +1653,8 @@
 
                 </div>
 
+                <button type="button" class="panel-resize-handle" aria-label="Drag to resize pseudocode panel" title="Drag to resize"><span aria-hidden="true"></span></button>
+
             </section>
 
 
@@ -1735,6 +1752,8 @@
                     </span>
 
                 </div>
+
+                <button type="button" class="panel-resize-handle" aria-label="Drag to resize output panel" title="Drag to resize"><span aria-hidden="true"></span></button>
 
             </section>
 
@@ -7082,6 +7101,22 @@ document.getElementById("closeHelpDialog").addEventListener("click",()=>document
 document.getElementById("signOutButton").addEventListener("click",()=>{if(currentProfile?.isGuest){showProfilePage();return;}if(switchToGuest())showProfilePage();});
 document.getElementById("flowGridToggle").addEventListener("click",()=>{setTimeout(()=>{window.dpfPreferences.showGrid=flowGridEnabled;localStorage.setItem(profileSettingsKey(),JSON.stringify(window.dpfPreferences));syncSettingsControls();},0);});
 document.getElementById("flowSnapToggle").addEventListener("click",()=>{setTimeout(()=>{window.dpfPreferences.snapToGrid=flowSnapEnabled;localStorage.setItem(profileSettingsKey(),JSON.stringify(window.dpfPreferences));syncSettingsControls();},0);});
+document.querySelectorAll(".panel-resize-handle").forEach(handle=>{
+    handle.addEventListener("pointerdown",event=>{
+        if(event.button!==0)return;
+        event.preventDefault();
+        const panel=handle.closest(".panel");
+        if(!panel)return;
+        const startY=event.clientY;
+        const startHeight=panel.getBoundingClientRect().height;
+        document.body.classList.add("panel-resizing");
+        const move=moveEvent=>{panel.style.height=Math.max(360,Math.min(1200,startHeight+moveEvent.clientY-startY))+"px";};
+        const finish=()=>{document.body.classList.remove("panel-resizing");window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",finish);window.removeEventListener("pointercancel",finish);};
+        window.addEventListener("pointermove",move);
+        window.addEventListener("pointerup",finish,{once:true});
+        window.addEventListener("pointercancel",finish,{once:true});
+    });
+});
 let autoSaveTimer=null;
 function resetAutoSaveTimer(){if(autoSaveTimer)clearInterval(autoSaveTimer);const p=window.dpfPreferences||{};if(!p.autoSave)return;autoSaveTimer=setInterval(()=>{if(projectDirty&&projectTitle.value.trim())saveCurrentProject();},Math.max(1,Number(p.autoSaveInterval)||5)*60000);}
 const originalApplyPreferences=applyPreferences;
