@@ -1316,7 +1316,7 @@
       <h2 class="settings-title">Settings</h2>
       <div class="settings-grid">
         <article class="settings-card"><h3>🎨 Appearance</h3>
-          <label class="settings-row">Theme<select data-setting="theme"><option value="dark">Dark</option><option value="light">Light</option><option value="system">System</option></select></label>
+          <label class="settings-row">Theme<select data-setting="theme"><option value="dark">Dark (temporarily)</option></select></label>
           <label class="settings-row">Accent color<input type="color" data-setting="accentColor"></label>
           <label class="settings-row">Editor font size<input type="number" min="10" max="28" data-setting="editorFontSize"></label>
           <label class="settings-row">UI scale<select data-setting="uiScale"><option value="small">Small</option><option value="default">Default</option><option value="large">Large</option></select></label>
@@ -5197,18 +5197,13 @@ function openFlowTextEditor(
 
 
     flowTextEditor.classList.add("visible");
+
+    // Focus synchronously so the first click or keystroke is never lost to a timer race.
+    flowTextEditor.getBoundingClientRect();
+    flowTextInput.focus({ preventScroll: true });
+    flowTextInput.select();
+
     renderFlowTextEditorWire();
-
-    setTimeout(
-        () => {
-
-            flowTextInput.focus();
-
-            flowTextInput.select();
-
-        },
-        0
-    );
 }
 
 
@@ -7021,7 +7016,8 @@ function syncSettingsControls() {
 }
 function applyPreferences() {
     const p=window.dpfPreferences||DEFAULT_DPF_PREFERENCES;
-    document.body.dataset.theme=p.theme==="system"?(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):p.theme;
+    if(p.theme!=="dark"){p.theme="dark";localStorage.setItem(profileSettingsKey(),JSON.stringify(p));}
+    document.body.dataset.theme="dark";
     document.body.dataset.uiScale=p.uiScale||"default";
     document.documentElement.style.setProperty("--accent-color",p.accentColor||"#6366f1");
     document.documentElement.style.setProperty("--editor-font-size",(Number(p.editorFontSize)||14)+"px");
@@ -7082,7 +7078,6 @@ let autoSaveTimer=null;
 function resetAutoSaveTimer(){if(autoSaveTimer)clearInterval(autoSaveTimer);const p=window.dpfPreferences||{};if(!p.autoSave)return;autoSaveTimer=setInterval(()=>{if(projectDirty&&projectTitle.value.trim())saveCurrentProject();},Math.max(1,Number(p.autoSaveInterval)||5)*60000);}
 const originalApplyPreferences=applyPreferences;
 applyPreferences=function(){originalApplyPreferences();resetAutoSaveTimer();};
-window.matchMedia("(prefers-color-scheme: light)").addEventListener?.("change",()=>{if(window.dpfPreferences.theme==="system")applyPreferences();});
 initializeProfileGate();
 
 /* =========================================================
