@@ -1050,6 +1050,12 @@
         .header-actions { display:flex; align-items:center; gap:8px; }
         .header-icon-button { width:40px;height:40px;padding:0;text-align:center;font-size:19px; }
         .dashboard-page,.settings-page { display:none; padding:28px clamp(18px,4vw,58px) 48px; min-height:65vh; }
+        /* Welcome is temporarily disabled; guest/profile startup now opens Home directly. */
+        #welcomeScreen { display:none !important; }
+        .dashboard-page { position:relative; isolation:isolate; }
+        #dashboardPage::before { content:""; position:absolute; z-index:0; pointer-events:none; right:clamp(24px,8vw,110px); top:50%; transform:translateY(-50%); width:min(38vw,390px); aspect-ratio:1; background:url("logo.png") center / contain no-repeat; opacity:.09; }
+        #dashboardPage > * { position:relative; z-index:1; }
+        #dashboardPage.home-logo-disabled::before { display:none; }
         .app.home-mode #dashboardPage,.app.settings-mode #settingsPage { display:block; }
         .app.profile-mode #profilePage { display:block; }
         .app.profile-mode .project-workspace-bar,.app.profile-mode .workspace-tabs,.app.profile-mode .workspace-view,.app.profile-mode .app-footer { display:none !important; }
@@ -1320,6 +1326,7 @@
           <label class="settings-row">Accent color<input type="color" data-setting="accentColor"></label>
           <label class="settings-row">Editor font size<input type="number" min="10" max="28" data-setting="editorFontSize"></label>
           <label class="settings-row">UI scale<select data-setting="uiScale"><option value="small">Small</option><option value="default">Default</option><option value="large">Large</option></select></label>
+          <label class="settings-row">Show logo on Home<input type="checkbox" data-setting="showHomeLogo"></label>
         </article>
         <article class="settings-card"><h3>📝 Pseudocode Editor</h3>
           <label class="settings-row">Show line numbers<input type="checkbox" data-setting="showLineNumbers"></label>
@@ -2126,7 +2133,7 @@
 const DEFAULT_DPF_PREFERENCES = {
     theme:"dark",accentColor:"#6366f1",editorFontSize:14,uiScale:"default",showLineNumbers:true,autoIndent:true,syntaxHighlighting:true,indentSize:"4",normalizeQuotes:true,
     showGrid:true,snapToGrid:true,defaultZoom:"1",defaultShapeSize:"default",arrowStyle:"standard",showConnectionPoints:true,stepByStepMode:false,showExecutionMessages:true,clearOutputBeforeRun:true,
-    autoSave:false,autoSaveInterval:5,confirmDelete:true,autoCheckUpdates:false,showHomeOnStartup:true,rememberLastWorkspace:true,openLastProject:false
+    autoSave:false,autoSaveInterval:5,confirmDelete:true,autoCheckUpdates:false,showHomeOnStartup:true,rememberLastWorkspace:true,openLastProject:false,showHomeLogo:true
 };
 let currentProfile = null;
 window.dpfPreferences = { ...DEFAULT_DPF_PREFERENCES };
@@ -7018,6 +7025,7 @@ function applyPreferences() {
     const p=window.dpfPreferences||DEFAULT_DPF_PREFERENCES;
     if(p.theme!=="dark"){p.theme="dark";localStorage.setItem(profileSettingsKey(),JSON.stringify(p));}
     document.body.dataset.theme="dark";
+    const dashboard=document.getElementById("dashboardPage");if(dashboard)dashboard.classList.toggle("home-logo-disabled",p.showHomeLogo===false);
     document.body.dataset.uiScale=p.uiScale||"default";
     document.documentElement.style.setProperty("--accent-color",p.accentColor||"#6366f1");
     document.documentElement.style.setProperty("--editor-font-size",(Number(p.editorFontSize)||14)+"px");
