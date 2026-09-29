@@ -504,6 +504,11 @@ function updateEditorVisuals() {
     updateHighlight();
 
     syncEditorScroll();
+    const prefs = window.dpfPreferences || {};
+    const lineNumbers = document.getElementById("lineNumbers");
+    const highlight = document.getElementById("highlightLayer");
+    if (lineNumbers) lineNumbers.hidden = prefs.showLineNumbers === false;
+    if (highlight) highlight.hidden = prefs.syntaxHighlighting === false;
 }
 
 
@@ -513,6 +518,7 @@ function updateEditorVisuals() {
 
 function normalizeQuotes(text) {
 
+    if (window.dpfPreferences?.normalizeQuotes === false) return text;
     return text
         .replace(
             /[“”]/g,
@@ -2582,7 +2588,8 @@ function checkSyntax() {
 
 function runProgram() {
 
-    clearOutput();
+    if (window.dpfPreferences?.stepByStepMode) { runStepByStep(); return; }
+    if (window.dpfPreferences?.clearOutputBeforeRun !== false) clearOutput();
 
     hideInput();
 
@@ -2611,10 +2618,6 @@ function runProgram() {
 
         return;
     }
-
-
-    clearOutput();
-
 
     programLines =
         document
@@ -2645,7 +2648,7 @@ function runProgram() {
 
 function runStepByStep() {
 
-    clearOutput();
+    if (window.dpfPreferences?.clearOutputBeforeRun !== false) clearOutput();
 
     hideInput();
 
@@ -2669,10 +2672,6 @@ function runStepByStep() {
 
         return;
     }
-
-
-    clearOutput();
-
 
     programLines =
         document
@@ -3574,8 +3573,7 @@ function hideInput() {
    INDENTATION
 ========================================================= */
 
-const INDENT =
-    "    ";
+let INDENT = window.dpfPreferences?.indentSize ? " ".repeat(Number(window.dpfPreferences.indentSize)) : "    ";
 
 
 function getLeadingSpaces(line) {
@@ -3671,7 +3669,7 @@ function formatPseudocode() {
         const clean =
             removeComment(
                 original
-            ).trim();
+            ).trim().toLowerCase();
 
 
         if (
@@ -3703,7 +3701,7 @@ function formatPseudocode() {
             inDeclare = false;
 
             formatted.push(
-                "START"
+                "Start"
             );
 
             level = 1;
@@ -3725,7 +3723,7 @@ function formatPseudocode() {
             inDeclare = false;
 
             formatted.push(
-                "STOP"
+                "Stop"
             );
 
             continue;
@@ -3746,7 +3744,7 @@ function formatPseudocode() {
                 INDENT.repeat(
                     level
                 ) +
-                "DECLARE"
+                "Declare"
             );
 
             level++;
@@ -3770,7 +3768,7 @@ function formatPseudocode() {
                 INDENT.repeat(
                     level
                 ) +
-                clean
+                clean.replace(/\bas\s+(boolean|character|float|integer|real|string|constant)\b/i, (_match, type) => "as " + type.toLowerCase())
             );
 
             continue;
@@ -3815,7 +3813,7 @@ function formatPseudocode() {
                 INDENT.repeat(
                     level
                 ) +
-                "ELSE"
+                "else"
             );
 
 
@@ -3844,9 +3842,27 @@ function formatPseudocode() {
                 INDENT.repeat(
                     level
                 ) +
-                "ENDIF"
+                "endif"
             );
 
+
+            continue;
+        }
+
+
+        /*
+           PRINT and READ
+        */
+
+        const ioCommand = clean.match(/^(print|read)\b([\s\S]*)$/i);
+
+        if (ioCommand) {
+
+            formatted.push(
+                INDENT.repeat(level) +
+                ioCommand[1].toLowerCase() +
+                ioCommand[2]
+            );
 
             continue;
         }
@@ -3865,7 +3881,7 @@ function formatPseudocode() {
                 INDENT.repeat(
                     level
                 ) +
-                clean
+                clean.replace(/^if\b/i, "if").replace(/\bthen\s*$/i, "then")
             );
 
 
@@ -4303,6 +4319,7 @@ editor.addEventListener(
         ) {
 
             event.preventDefault();
+            INDENT = " ".repeat(Math.max(1, Math.min(8, Number(window.dpfPreferences?.indentSize) || 4)));
 
 
             const start =
@@ -4453,10 +4470,9 @@ editor.addEventListener(
                 );
 
 
-            const indent =
-                autoIndentAfterEnter(
-                    previousLine
-                );
+            const indent = window.dpfPreferences?.autoIndent === false
+                ? ""
+                : autoIndentAfterEnter(previousLine);
 
 
             editor.value =

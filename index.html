@@ -5,6 +5,8 @@
 
     <meta charset="UTF-8">
 
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+
     <meta
         name="viewport"
         content="width=device-width, initial-scale=1.0"
@@ -666,8 +668,6 @@
         .flowchart-node-text {
             fill: #f8fafc;
 
-            font-size: 14px;
-
             font-family: Arial, sans-serif;
 
             text-anchor: middle;
@@ -1034,12 +1034,163 @@
 
         }
 
-    </style>
+    
+        /* Home dashboard, local profiles, and preferences */
+        .app { width: calc(100% - 226px); margin-left: 226px; position: relative; }
+        .app-sidebar { position: fixed; z-index: 120; inset: 0 auto 0 0; width: 206px; padding: 18px 14px; display:flex; flex-direction:column; gap:18px; background:#0b1220; border-right:1px solid #253247; box-sizing:border-box; }
+        .sidebar-brand { display:flex; align-items:center; gap:10px; padding:3px 5px 18px; border-bottom:1px solid #253247; color:#f8fafc; font-weight:800; line-height:1.15; }
+        .sidebar-brand img { width:38px;height:38px;object-fit:contain; }
+        .sidebar-nav { display:grid; gap:7px; }
+        .sidebar-nav button,.sidebar-profile button,.header-icon-button { border:1px solid transparent; border-radius:9px; background:transparent; color:#aebbd0; padding:11px 12px; text-align:left; font:inherit; font-weight:700; cursor:pointer; }
+        .sidebar-nav button:hover,.sidebar-nav button.active,.header-icon-button:hover { color:#fff; background:#1b2940; border-color:#334155; }
+        .sidebar-profile { margin-top:auto; display:grid; gap:8px; padding-top:14px; border-top:1px solid #253247; }
+        .sidebar-profile-summary { display:flex; align-items:center; gap:10px; color:#e2e8f0; font-size:13px; overflow-wrap:anywhere; }
+        .profile-avatar { width:38px;height:38px;display:grid;place-items:center;border-radius:50%;background:#26344e;font-size:21px;flex:none; }
+        .sidebar-profile button { font-size:12px; }
+        .header-actions { display:flex; align-items:center; gap:8px; }
+        .header-icon-button { width:40px;height:40px;padding:0;text-align:center;font-size:19px; }
+        .dashboard-page,.settings-page { display:none; padding:28px clamp(18px,4vw,58px) 48px; min-height:65vh; }
+        .app.home-mode #dashboardPage,.app.settings-mode #settingsPage { display:block; }
+        .app.profile-mode #profilePage { display:block; }
+        .app.profile-mode .project-workspace-bar,.app.profile-mode .workspace-tabs,.app.profile-mode .workspace-view,.app.profile-mode .app-footer { display:none !important; }
+        .app.home-mode .project-workspace-bar,.app.home-mode .workspace-tabs,.app.home-mode .workspace-view,.app.home-mode .app-footer,
+        .app.settings-mode .project-workspace-bar,.app.settings-mode .workspace-tabs,.app.settings-mode .workspace-view,.app.settings-mode .app-footer { display:none !important; }
+        .dashboard-greeting { margin:8px 0 26px; }
+        .dashboard-greeting h2 { margin:0 0 7px;font-size:30px;color:#f8fafc; }
+        .dashboard-greeting p { margin:0;color:#94a3b8; }
+        .dashboard-actions { display:flex; gap:16px; flex-wrap:wrap; margin:24px 0 36px; }
+        .dashboard-action-card { width:190px;min-height:126px;border:1px solid #334155;border-radius:14px;background:#121d30;color:#e2e8f0;display:grid;place-content:center;gap:10px;text-align:center;font:inherit;font-weight:800;cursor:pointer; }
+        .dashboard-action-card:hover { border-color:#818cf8;transform:translateY(-2px); }
+        .dashboard-action-card span { font-size:28px;color:#a5b4fc; }
+        .dashboard-section-heading { display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 14px;color:#dbe5f5;letter-spacing:.07em;font-size:13px; }
+        .dashboard-section-heading button { border:0;background:none;color:#a5b4fc;font:inherit;font-weight:700;cursor:pointer; }
+        .dashboard-recent-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(225px,1fr));gap:14px; }
+        .dashboard-project-card { min-height:165px;padding:16px;border:1px solid #27364d;border-radius:12px;background:#111b2b;display:flex;flex-direction:column;gap:8px; }
+        .dashboard-project-card h3 { margin:0;color:#f1f5f9;font-size:15px; }
+        .dashboard-project-card p { margin:0;color:#aab6c7;font-size:12px; }
+        .dashboard-project-card .open-recent { margin-top:auto;align-self:flex-start;border:1px solid #475569;border-radius:7px;background:#1e293b;color:#e2e8f0;padding:7px 14px;font-weight:700;cursor:pointer; }
+        .dashboard-empty { color:#94a3b8;padding:20px;border:1px dashed #334155;border-radius:12px; }
+        .settings-title { margin:8px 0 22px;color:#f8fafc;font-size:28px; }
+        .settings-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:15px; }
+        .settings-card { padding:18px;border:1px solid #27364d;border-radius:12px;background:#111b2b; }
+        .settings-card h3 { margin:0 0 14px;color:#e2e8f0;font-size:15px; }
+        .settings-row { display:flex;justify-content:space-between;align-items:center;gap:14px;margin:11px 0;color:#aebbd0;font-size:13px; }
+        .settings-row select,.settings-row input[type=number],.settings-row input[type=color] { min-width:92px;max-width:145px;padding:7px;border:1px solid #40506a;border-radius:7px;background:#0b1220;color:#e2e8f0; }
+        .settings-row input[type=checkbox] { width:18px;height:18px;accent-color:var(--accent-color,#6366f1); }
+        .settings-about { color:#aebbd0;line-height:1.65; }
+        [hidden] { display:none !important; }
+        .profile-page-heading { display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap; }
+        .profile-page-heading p,.profile-edit-hint,.profile-recovery-question { color:#94a3b8;font-size:13px; }
+        .profile-page-actions { display:flex;gap:8px;flex-wrap:wrap; }
+        .profile-edit-form { max-width:720px; }
+        .profile-edit-form label { display:grid;gap:7px;margin:14px 0;color:#aebbd0;font-size:13px; }
+        .profile-edit-form input { box-sizing:border-box;width:100%;padding:10px;border:1px solid #40506a;border-radius:7px;background:#0b1220;color:#e2e8f0; }
+        .profile-recovery-question { font-weight:700; }
+        .profile-gate { position:fixed;z-index:20000;inset:0;display:grid;place-items:center;padding:20px;overflow:auto;background:radial-gradient(circle at top,#182946,#070b13 72%);color:#e5e7eb; }
+        .profile-gate-card { width:min(560px,100%);padding:28px;border:1px solid #334155;border-radius:18px;background:#101827;box-shadow:0 24px 80px #0009; }
+        .profile-gate-brand { display:flex;align-items:center;gap:13px;margin-bottom:22px; }
+        .profile-gate-brand img { width:54px;height:54px;object-fit:contain; }
+        .profile-gate-brand h1 { margin:0;font-size:21px; }
+        .profile-gate-brand p { margin:5px 0 0;color:#94a3b8;font-size:12px; }
+        .profile-form h2 { margin:10px 0 5px;font-size:21px; }
+        .profile-form>p { margin:0 0 18px;color:#94a3b8;font-size:13px; }
+        .profile-form label { display:grid;gap:6px;margin:12px 0;color:#b9c5d6;font-size:12px;font-weight:700; }
+        .profile-form input { box-sizing:border-box;width:100%;padding:11px;border:1px solid #3b4b63;border-radius:8px;background:#0a111d;color:#f8fafc;font:inherit; }
+        .profile-form .profile-name-row { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+        .profile-form-actions { display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px; }
+        .profile-submit { border:0;border-radius:8px;padding:11px 18px;background:#4f46e5;color:#fff;font-weight:800;cursor:pointer; }
+        .profile-switch { border:0;background:none;color:#a5b4fc;font-weight:700;cursor:pointer; }
+        .profile-error { min-height:18px;color:#fca5a5;font-size:12px; }
+        .avatar-choices { display:flex;gap:8px;flex-wrap:wrap;margin-top:5px; }
+        .avatar-choice { width:39px;height:39px;border:1px solid #40506a;border-radius:50%;background:#18253a;font-size:21px;cursor:pointer; }
+        .avatar-choice.selected { border:2px solid #818cf8;background:#26365a; }
+        .save-as-dialog,.help-dialog { width:min(450px,calc(100% - 36px));border:1px solid #334155;border-radius:14px;background:#111827;color:#e5e7eb;padding:22px;box-shadow:0 22px 60px #0009; }
+        .save-as-dialog::backdrop,.help-dialog::backdrop { background:#020617c9; }
+        .help-dialog { width:min(790px,calc(100% - 28px));max-height:85vh;overflow:auto; }
+        .help-title-row { display:flex;align-items:center;gap:12px;margin-bottom:16px; }
+        .help-title-row h2 { margin:0;font-size:22px; }
+        .help-title-row p { margin:4px 0 0;color:#94a3b8;font-size:13px; }
+        .help-title-icon { display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:#312e81;color:#c7d2fe;font-size:22px; }
+        .help-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:9px; }
+        .help-item { min-height:64px;display:flex;align-items:center;gap:11px;padding:10px;border:1px solid #334155;border-radius:10px;background:#0b1220;color:#e2e8f0; }
+        .help-item>span:last-child { display:grid;gap:3px; }
+        .help-item small { color:#94a3b8;font-size:11px;line-height:1.35; }
+        .help-icon { min-width:39px;height:36px;display:flex;align-items:center;justify-content:center;gap:2px;border:1px solid #475569;border-radius:8px;background:#1e293b;color:#c7d2fe;font-weight:800;font-size:15px; }
+        .help-icon kbd { padding:3px 4px;border:1px solid #64748b;border-radius:4px;background:#0f172a;color:#f8fafc;font:700 10px ui-monospace,monospace; }
+        .help-dialog-actions { display:flex;justify-content:flex-end;margin-top:16px; }
+        .save-as-dialog input { width:100%;box-sizing:border-box;padding:11px;border:1px solid #475569;border-radius:8px;background:#0b1120;color:#fff;margin:12px 0; }
+        .save-as-actions { display:flex;justify-content:flex-end;gap:8px; }
+        body[data-theme="light"] { background:#eef2f7!important;color:#1f2937!important; }
+        body[data-theme="light"] .editor-wrapper { background:#fff!important;border-color:#cbd5e1!important; }
+        body[data-theme="light"] .line-numbers { background:#f1f5f9!important;border-color:#cbd5e1!important;color:#64748b!important; }
+        body[data-theme="light"] .highlight-layer { color:#1f2937!important; }
+        body[data-theme="light"] #pseudocode { caret-color:#111827!important; }
+        body[data-theme="light"] #pseudocode::placeholder { color:#64748b!important;-webkit-text-fill-color:#64748b!important; }
+        body[data-theme="light"] .hl-keyword { color:#1d4ed8!important; }
+        body[data-theme="light"] .hl-type { color:#7e22ce!important; }
+        body[data-theme="light"] .hl-number { color:#92400e!important; }
+        body[data-theme="light"] .hl-string { color:#166534!important; }
+        body[data-theme="light"] .hl-comment { color:#64748b!important; }
+        body[data-theme="light"] .hl-operator { color:#be123c!important; }
+        body[data-theme="light"] .hl-identifier { color:#1f2937!important; }
+        body[data-theme="light"] .flowchart-node-text { fill:#111827!important; }
+        body[data-theme="light"] .flowchart-node-shape { fill:#fff!important;stroke:#475569!important; }
+        body[data-theme="light"] .flowchart-canvas-wrapper { background-color:#fff!important; }
+        body[data-theme="light"] .help-item { background:#f8fafc;border-color:#cbd5e1;color:#1e293b; }
+        body[data-theme="light"] .help-item small { color:#475569; }
+        body[data-theme="light"] .help-icon { background:#e2e8f0;border-color:#cbd5e1;color:#312e81; }
+        body[data-theme="light"] .help-icon kbd { background:#fff;border-color:#94a3b8;color:#1e293b; }
+        body[data-theme="light"] .app-header,body[data-theme="light"] .project-workspace-bar,body[data-theme="light"] .panel,body[data-theme="light"] .settings-card,body[data-theme="light"] .dashboard-project-card { background:#fff!important;color:#1f2937!important;border-color:#cbd5e1!important; }
+        body[data-theme="light"] .dashboard-greeting h2,body[data-theme="light"] .settings-title,body[data-theme="light"] .dashboard-project-card h3 { color:#111827!important; }
+        body[data-theme="light"] .app-sidebar { background:#e2e8f0;border-color:#cbd5e1; }
+        body[data-theme="light"] .sidebar-brand,body[data-theme="light"] .sidebar-profile-summary { color:#1e293b; }
+        body[data-theme="light"] .sidebar-nav button,body[data-theme="light"] .sidebar-profile button { color:#334155; }
+        body[data-theme="light"] .dashboard-action-card { background:#fff;color:#1e293b;border-color:#cbd5e1; }
+        body[data-ui-scale="small"] { zoom:.92; }
+        body[data-ui-scale="large"] { zoom:1.08; }
+        @media(max-width:760px){.app{width:100%;margin-left:0}.app-sidebar{position:sticky;inset:auto;width:100%;height:auto;padding:8px 10px;flex-direction:row;align-items:center;gap:8px}.sidebar-brand{border:0;padding:4px}.sidebar-brand img{width:30px;height:30px}.sidebar-brand span{display:none}.sidebar-nav{display:flex;gap:3px;overflow:auto}.sidebar-nav button{padding:8px;font-size:12px;white-space:nowrap}.sidebar-profile{margin:0 0 0 auto;padding:0;border:0}.sidebar-profile-summary span:last-child{display:none}.sidebar-profile .sign-out{padding:7px}.app{display:flex;flex-direction:column}.profile-form .profile-name-row{grid-template-columns:1fr}.dashboard-page,.settings-page{padding:22px 14px}}
+</style>
 
 </head>
 
 
 <body>
+<div id="profileGate" class="profile-gate">
+  <div class="profile-gate-card">
+    <div class="profile-gate-brand"><img src="logo.png" alt=""><div><h1>Di PseudoFlow Logics</h1><p>Your pseudocode and flowchart workspace</p></div></div>
+    <form id="profileLoginForm" class="profile-form" hidden>
+      <h2>Welcome back</h2><p>Sign in to open your projects and work stamp.</p>
+      <label>Username<input id="loginUsername" autocomplete="username" required></label>
+      <label>Password<input id="loginPassword" type="password" autocomplete="current-password" required></label>
+      <div class="profile-error" id="loginError" role="alert"></div>
+      <div class="profile-form-actions"><button type="button" class="profile-switch" id="showCreateProfile">Create a profile</button><button class="profile-submit" type="submit">Sign In</button></div><button type="button" class="profile-switch" id="continueGuestFromLogin">Continue as Guest</button>
+      <button type="button" class="profile-switch" id="showRecoveryForm">Forgot password?</button>
+    </form>
+    <form id="profileCreateForm" class="profile-form" hidden>
+      <h2>Create your profile</h2><p>Your profile name will identify work on exports. Your account stays on this computer.</p>
+      <div class="profile-name-row"><label>First name<input id="profileFirstName" autocomplete="given-name" maxlength="50" required></label><label>Last name<input id="profileLastName" autocomplete="family-name" maxlength="50" required></label></div>
+      <label>Username<input id="profileUsername" autocomplete="username" minlength="3" maxlength="32" required></label>
+      <label>Password<input id="profilePassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required><small>Use at least 8 characters.</small></label>
+      <label>Recovery question<input id="profileRecoveryQuestion" maxlength="180" placeholder="Example: What was the name of your first school?" required></label>
+      <label>Recovery answer<input id="profileRecoveryAnswer" maxlength="120" autocomplete="off" required><small>Your answer is stored securely on this computer.</small></label>
+      <div class="profile-name-row"><label>School name <small>(optional)</small><input id="profileSchoolName" maxlength="100"></label><label>Student ID <small>(optional)</small><input id="profileSchoolId" maxlength="60"></label></div>
+      <label>Choose an avatar<div class="avatar-choices" id="avatarChoices"></div><input id="profileAvatar" type="hidden" value="🙂"></label>
+      <div class="profile-error" id="createError" role="alert"></div>
+      <div class="profile-form-actions"><button type="button" class="profile-switch" id="showLoginProfile">Already have a profile? Sign in</button><button class="profile-submit" type="submit">Create Profile</button></div><button type="button" class="profile-switch" id="continueGuestFromCreate">Continue as Guest</button>
+    </form>
+    <form id="profileRecoveryForm" class="profile-form" hidden>
+      <h2>Reset your password</h2><p>Answer your recovery question to set a new password.</p>
+      <label>Username<input id="recoveryUsername" autocomplete="username" required></label>
+      <button type="button" class="project-action" id="loadRecoveryQuestion">Show recovery question</button>
+      <p id="recoveryQuestionText" class="profile-recovery-question"></p>
+      <label>Recovery answer<input id="recoveryAnswer" autocomplete="off" required></label>
+      <label>New password<input id="recoveryNewPassword" type="password" minlength="8" maxlength="128" required></label>
+      <div class="profile-error" id="recoveryError" role="alert"></div>
+      <div class="profile-form-actions"><button type="button" class="profile-switch" id="backToLogin">Back to sign in</button><button class="profile-submit" type="submit">Reset Password</button></div>
+    </form>
+  </div>
+</div>
+
 
 
 <!-- =========================================================
@@ -1123,7 +1274,12 @@
 
 
 
-<div class="app">
+<div class="app home-mode" id="appRoot">
+<aside class="app-sidebar" id="appSidebar">
+  <div class="sidebar-brand"><img src="logo.png" alt=""><span>Di PseudoFlow<br>Logics</span></div>
+  <nav class="sidebar-nav" aria-label="Main navigation"><button id="navHome" class="active">🏠 Home</button><button id="navProjects">📁 Projects</button><button id="navSettings">⚙ Settings</button><button id="navProfile">👤 Profile</button></nav>
+  <div class="sidebar-profile"><div class="sidebar-profile-summary"><span class="profile-avatar" id="sidebarAvatar">🙂</span><span><strong id="sidebarProfileName">Profile</strong><br><small id="sidebarProfileUsername"></small></span></div><button id="signOutButton" class="sign-out">Guest mode</button></div>
+</aside>
 
 
     <!-- =====================================================
@@ -1145,12 +1301,85 @@
 
         </div>
 
-        <div class="header-badge">
-            CPRG1201
-        </div>
+        <div class="header-actions"><span class="header-badge">CPRG1201</span><button type="button" class="header-icon-button" id="headerSettingsButton" aria-label="Settings" title="Settings">⚙</button><button type="button" class="header-icon-button" id="headerHelpButton" aria-label="Help" title="Help">?</button></div>
 
     </header>
 
+    <section class="dashboard-page" id="dashboardPage">
+      <div class="dashboard-greeting"><h2 id="dashboardGreeting">Good day</h2><p>Ready to build?</p></div>
+      <div class="dashboard-actions"><button class="dashboard-action-card" id="dashboardNewProject"><span>＋</span>New Project</button><button class="dashboard-action-card" id="dashboardOpenProject"><span>📂</span>Open Project</button></div>
+      <div class="dashboard-section-heading"><span>RECENT PROJECTS</span><button id="dashboardAllProjects">ALL PROJECTS →</button></div>
+      <div id="dashboardRecentProjects" class="dashboard-recent-grid"><div class="dashboard-empty">Loading your projects…</div></div>
+    </section>
+
+    <section class="settings-page" id="settingsPage">
+      <h2 class="settings-title">Settings</h2>
+      <div class="settings-grid">
+        <article class="settings-card"><h3>🎨 Appearance</h3>
+          <label class="settings-row">Theme<select data-setting="theme"><option value="dark">Dark</option><option value="light">Light</option><option value="system">System</option></select></label>
+          <label class="settings-row">Accent color<input type="color" data-setting="accentColor"></label>
+          <label class="settings-row">Editor font size<input type="number" min="10" max="28" data-setting="editorFontSize"></label>
+          <label class="settings-row">UI scale<select data-setting="uiScale"><option value="small">Small</option><option value="default">Default</option><option value="large">Large</option></select></label>
+        </article>
+        <article class="settings-card"><h3>📝 Pseudocode Editor</h3>
+          <label class="settings-row">Show line numbers<input type="checkbox" data-setting="showLineNumbers"></label>
+          <label class="settings-row">Auto-indent<input type="checkbox" data-setting="autoIndent"></label>
+          <label class="settings-row">Syntax highlighting<input type="checkbox" data-setting="syntaxHighlighting"></label>
+          <label class="settings-row">Font size<input type="number" min="10" max="28" data-setting="editorFontSize"></label>
+          <label class="settings-row">Tab / indent size<select data-setting="indentSize"><option value="2">2 spaces</option><option value="4">4 spaces</option><option value="8">8 spaces</option></select></label>
+          <label class="settings-row">Normalize quotation marks<input type="checkbox" data-setting="normalizeQuotes"></label>
+        </article>
+        <article class="settings-card"><h3>🔷 Flowchart</h3>
+          <label class="settings-row">Show grid<input type="checkbox" data-setting="showGrid"></label>
+          <label class="settings-row">Snap to grid<input type="checkbox" data-setting="snapToGrid"></label>
+          <label class="settings-row">Default zoom<select data-setting="defaultZoom"><option value="0.75">75%</option><option value="1">100%</option><option value="1.25">125%</option></select></label>
+          <label class="settings-row">Default shape size<select data-setting="defaultShapeSize"><option value="small">Small</option><option value="default">Default</option><option value="large">Large</option></select></label>
+          <label class="settings-row">Connector arrow style<select data-setting="arrowStyle"><option value="standard">Standard</option><option value="compact">Compact</option></select></label>
+          <label class="settings-row">Show connection points<input type="checkbox" data-setting="showConnectionPoints"></label>
+        </article>
+        <article class="settings-card"><h3>▶️ Program Execution</h3>
+          <label class="settings-row">Step-by-step mode<input type="checkbox" data-setting="stepByStepMode"></label>
+          <label class="settings-row">Show execution messages<input type="checkbox" data-setting="showExecutionMessages"></label>
+          <label class="settings-row">Clear output before running<input type="checkbox" data-setting="clearOutputBeforeRun"></label>
+        </article>
+        <article class="settings-card"><h3>💾 Projects</h3>
+          <label class="settings-row">Auto-save<input type="checkbox" data-setting="autoSave"></label>
+          <label class="settings-row">Auto-save interval (minutes)<input type="number" min="1" max="60" data-setting="autoSaveInterval"></label>
+          <label class="settings-row">Confirm before deleting<input type="checkbox" data-setting="confirmDelete"></label>
+        </article>
+        <article class="settings-card"><h3>🔄 Updates</h3>
+          <label class="settings-row">Check automatically<input type="checkbox" data-setting="autoCheckUpdates"></label>
+          <label class="settings-row">Current version<strong id="settingsVersion">…</strong></label>
+          <div class="settings-row"><span>Check now</span><button class="project-action" id="settingsCheckUpdates">Check for Updates</button></div>
+        </article>
+        <article class="settings-card"><h3>🖥️ Startup</h3>
+          <label class="settings-row">Show Home on startup<input type="checkbox" data-setting="showHomeOnStartup"></label>
+          <label class="settings-row">Remember last workspace<input type="checkbox" data-setting="rememberLastWorkspace"></label>
+          <label class="settings-row">Open last project<input type="checkbox" data-setting="openLastProject"></label>
+        </article>
+        <article class="settings-card"><h3>ℹ️ About</h3><div class="settings-about"><strong>Di PseudoFlow Logics</strong><br>Version <span id="aboutVersion">…</span><br>A pseudocode learning and flowchart development environment.<br><br><strong>Created by Horace Williams</strong><br><span id="aboutProfileStamp"></span></div></article>
+      </div>
+    </section>
+
+    <section class="settings-page profile-page" id="profilePage">
+      <div class="profile-page-heading"><div><h2 class="settings-title">Profile</h2><p id="profileModeMessage">You are using Guest mode. No sign-up is required.</p></div><div class="profile-page-actions"><button type="button" class="project-action" id="profileCreateAccount">Create Profile</button><button type="button" class="project-action" id="profileSignIn">Sign In</button><button type="button" class="project-action" id="profileUseGuest">Use Guest Mode</button></div></div>
+      <article class="settings-card profile-edit-card" id="profileEditCard" hidden>
+        <h3>Personal details</h3>
+        <form id="profileEditForm" class="profile-edit-form">
+          <div class="profile-name-row"><label>First name<input id="editFirstName" maxlength="50" required></label><label>Last name<input id="editLastName" maxlength="50" required></label></div>
+          <label>Username<input id="editUsername" maxlength="32" required></label>
+          <div class="profile-name-row"><label>School name (optional)<input id="editSchoolName" maxlength="100"></label><label>Student ID (optional)<input id="editSchoolId" maxlength="60"></label></div>
+          <label>Avatar<div class="avatar-choices" id="editAvatarChoices"></div><input id="editAvatar" type="hidden" value="🙂"></label>
+          <h3>Recovery and password</h3><p class="profile-edit-hint">Enter your current password to save changes. Leave recovery answer and new password blank to keep the current values.</p>
+          <label>Recovery question<input id="editRecoveryQuestion" maxlength="180" placeholder="Your recovery question"></label>
+          <label>New recovery answer<input id="editRecoveryAnswer" maxlength="120" autocomplete="off"></label>
+          <label>New password<input id="editNewPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password"></label>
+          <label>Current password<input id="editCurrentPassword" type="password" required autocomplete="current-password"></label>
+          <div class="profile-error" id="profileEditError" role="alert"></div>
+          <button class="profile-submit" type="submit">Save Profile</button>
+        </form>
+      </article>
+    </section>
 
 
     <!-- =====================================================
@@ -1813,6 +2042,27 @@
      PROJECT LIBRARY
 ========================================================= -->
 
+<dialog id="saveAsDialog" class="save-as-dialog"><form id="saveAsForm"><h2>Save Project As</h2><p>Choose a name for this project copy.</p><label for="saveAsTitle">Project name</label><input id="saveAsTitle" maxlength="100" required><div class="save-as-actions"><button type="button" class="project-action" id="cancelSaveAs">Cancel</button><button class="project-action primary" type="submit">Save Copy</button></div></form></dialog>
+<dialog id="helpDialog" class="help-dialog">
+  <div class="help-title-row"><span class="help-title-icon">❔</span><div><h2>Quick controls</h2><p>Visual guide for common actions</p></div></div>
+  <div class="help-grid">
+    <div class="help-item"><span class="help-icon">↖</span><span><strong>Select or move</strong><small>Click a shape, then drag it.</small></span></div>
+    <div class="help-item"><span class="help-icon">▱</span><span><strong>Add a shape</strong><small>Drag a shape icon from the palette.</small></span></div>
+    <div class="help-item"><span class="help-icon">➜</span><span><strong>Connect shapes</strong><small>Choose a line tool, then click two anchor dots.</small></span></div>
+    <div class="help-item"><span class="help-icon">⇧ + click</span><span><strong>Select several</strong><small>Shift-click shapes to add or remove.</small></span></div>
+    <div class="help-item"><span class="help-icon">Esc</span><span><strong>Exit or clear</strong><small>Leave multi-select or cancel the active tool.</small></span></div>
+    <div class="help-item"><span class="help-icon">Space + ↔</span><span><strong>Pan workspace</strong><small>Hold Space and drag the canvas.</small></span></div>
+    <div class="help-item"><span class="help-icon">⌕</span><span><strong>Zoom</strong><small>Scroll the mouse wheel over the canvas.</small></span></div>
+    <div class="help-item"><span class="help-icon">✎</span><span><strong>Edit shape text</strong><small>Double-click a shape to edit its label and size.</small></span></div>
+    <div class="help-item"><span class="help-icon"><kbd>Ctrl</kbd><kbd>Z</kbd></span><span><strong>Undo</strong><small>Reverse your last change.</small></span></div>
+    <div class="help-item"><span class="help-icon"><kbd>Ctrl</kbd><kbd>Y</kbd></span><span><strong>Redo</strong><small>Restore an undone change.</small></span></div>
+    <div class="help-item"><span class="help-icon"><kbd>Ctrl</kbd><kbd>C</kbd></span><span><strong>Copy selection</strong><small>Copy selected flowchart shapes.</small></span></div>
+    <div class="help-item"><span class="help-icon"><kbd>Ctrl</kbd><kbd>V</kbd></span><span><strong>Paste selection</strong><small>Paste copied flowchart shapes.</small></span></div>
+    <div class="help-item"><span class="help-icon"><kbd>Ctrl</kbd><kbd>D</kbd></span><span><strong>Duplicate</strong><small>Make a copy of selected shapes.</small></span></div>
+  </div>
+  <div class="help-dialog-actions"><button type="button" class="project-action primary" id="closeHelpDialog">Got it</button></div>
+</dialog>
+
 <div
     id="projectLibraryOverlay"
     class="project-library-overlay"
@@ -1873,6 +2123,13 @@
    PROJECT STATE
 ========================================================= */
 
+const DEFAULT_DPF_PREFERENCES = {
+    theme:"dark",accentColor:"#6366f1",editorFontSize:14,uiScale:"default",showLineNumbers:true,autoIndent:true,syntaxHighlighting:true,indentSize:"4",normalizeQuotes:true,
+    showGrid:true,snapToGrid:true,defaultZoom:"1",defaultShapeSize:"default",arrowStyle:"standard",showConnectionPoints:true,stepByStepMode:false,showExecutionMessages:true,clearOutputBeforeRun:true,
+    autoSave:false,autoSaveInterval:5,confirmDelete:true,autoCheckUpdates:false,showHomeOnStartup:true,rememberLastWorkspace:true,openLastProject:false
+};
+let currentProfile = null;
+window.dpfPreferences = { ...DEFAULT_DPF_PREFERENCES };
 let currentProject = {
 
     id: null,
@@ -2020,7 +2277,7 @@ function ensureFlowchartStructure() {
 
             connectors: [],
 
-            zoom: 1,
+            zoom: Number(window.dpfPreferences?.defaultZoom) || 1,
 
             panX: 0,
 
@@ -2065,9 +2322,12 @@ function createWorkStamp(seed = "") {
 }
 
 function ensureWorkStamp(project = currentProject) {
+    if (currentProfile && !project.profileId) project.profileId = currentProfile.id;
+    if (currentProfile && !project.ownerDisplayName) project.ownerDisplayName = currentProfile.displayName;
+    if (currentProfile && !project.ownerUsername) project.ownerUsername = currentProfile.username;
     if (!project.workStamp) {
-        const stableSeed = project.id || project.created || `${project.title || "work"}-${Date.now()}`;
-        project.workStamp = createWorkStamp(stableSeed);
+        const seed = (project.profileId || "local") + "-" + (project.id || project.created || Date.now()) + "-" + Math.random();
+        project.workStamp = createWorkStamp(seed);
     }
     return project.workStamp;
 }
@@ -2091,7 +2351,10 @@ function createNewProjectObject() {
                 "pseudocode"
             )?.value || "",
 
-        workStamp: createWorkStamp(now),
+        workStamp: createWorkStamp(now + "-" + (currentProfile?.id || "local")),
+        profileId: currentProfile?.id || null,
+        ownerDisplayName: currentProfile?.displayName || "",
+        ownerUsername: currentProfile?.username || "",
 
         flowchart: {
 
@@ -2101,7 +2364,7 @@ function createNewProjectObject() {
 
             connectors: [],
 
-            zoom: 1,
+            zoom: Number(window.dpfPreferences?.defaultZoom) || 1,
 
             panX: 0,
 
@@ -2362,6 +2625,9 @@ async function saveCurrentProject() {
     }
 
 
+    currentProject.profileId = currentProfile?.id || currentProject.profileId || null;
+    currentProject.ownerDisplayName = currentProfile?.displayName || currentProject.ownerDisplayName || "";
+    currentProject.ownerUsername = currentProfile?.username || currentProject.ownerUsername || "";
     ensureWorkStamp(currentProject);
     currentProject.modified =
         new Date().toISOString();
@@ -2397,30 +2663,44 @@ async function saveCurrentProject() {
         formatProjectDate(
             currentProject.modified
         );
-
-
+    if (currentProfile && currentProject.id) localStorage.setItem("dpf-last-project-" + currentProfile.id, currentProject.id);
+    refreshDashboardRecentProjects();
     updateProjectStatus();
     return true;
 }
 
 
-async function saveProjectAs() {
-    const suggested = `${projectTitle.value.trim() || "Untitled Project"} Copy`;
-    const title = window.prompt("Save this project as:", suggested);
-    if (title === null) return;
-    if (!title.trim()) { alert("Enter a project title for the copy."); return; }
+let saveAsResolver = null;
+const saveAsDialog = document.getElementById("saveAsDialog");
+const saveAsTitleInput = document.getElementById("saveAsTitle");
+function requestSaveAsTitle(suggested) {
+    saveAsTitleInput.value = suggested;
+    return new Promise(resolve => { saveAsResolver = resolve; saveAsDialog.showModal(); setTimeout(() => { saveAsTitleInput.focus(); saveAsTitleInput.select(); }, 0); });
+}
+function finishSaveAsDialog(value) {
+    if (saveAsDialog.open) saveAsDialog.close();
+    const resolve = saveAsResolver; saveAsResolver = null; if (resolve) resolve(value);
+}
+document.getElementById("saveAsForm").addEventListener("submit", event => {
+    event.preventDefault(); const title = saveAsTitleInput.value.trim(); if (!title) { saveAsTitleInput.focus(); return; } finishSaveAsDialog(title);
+});
+document.getElementById("cancelSaveAs").addEventListener("click", () => finishSaveAsDialog(null));
+saveAsDialog.addEventListener("cancel", event => { event.preventDefault(); finishSaveAsDialog(null); });
 
-    const original = currentProject;
+async function saveProjectAs() {
+    const title = await requestSaveAsTitle((projectTitle.value.trim() || "Untitled Project") + " Copy");
+    if (!title) return;
+    const original = structuredClone(currentProject);
     currentProject = structuredClone(original);
-    currentProject.id = null;
-    currentProject.created = null;
-    currentProject.modified = null;
-    currentProject.workStamp = createWorkStamp(Date.now());
-    projectTitle.value = title.trim();
-    currentProject.title = title.trim();
-    projectDirty = true;
+    currentProject.id = null; currentProject.created = null; currentProject.modified = null;
+    currentProject.workStamp = createWorkStamp(Date.now() + "-" + (currentProfile?.id || "local") + "-" + Math.random());
+    currentProject.profileId = currentProfile?.id || original.profileId || null;
+    currentProject.ownerDisplayName = currentProfile?.displayName || original.ownerDisplayName || "";
+    currentProject.ownerUsername = currentProfile?.username || original.ownerUsername || "";
+    projectTitle.value = title; currentProject.title = title; projectDirty = true;
     const saved = await saveCurrentProject();
-    if (saved) resetProjectHistory();
+    if (saved) { resetProjectHistory(); showWorkspace("editorWorkspace"); }
+    else { currentProject = original; updateProjectFieldsFromState({ resetHistory: false }); }
 }
 
 
@@ -2478,9 +2758,9 @@ async function loadProject(projectId) {
         formatProjectDate(
             currentProject.modified
         );
-
-
+    if (currentProfile && currentProject.id) localStorage.setItem("dpf-last-project-" + currentProfile.id, currentProject.id);
     closeProjectLibrary();
+    showWorkspace(localStorage.getItem("dpf-last-workspace-" + (currentProfile?.id || "")) || "editorWorkspace");
 }
 
 
@@ -2490,14 +2770,7 @@ async function loadProject(projectId) {
 
 async function deleteProject(projectId) {
 
-    if (
-        !confirm(
-            "Delete this project permanently?"
-        )
-    ) {
-
-        return;
-    }
+    if (window.dpfPreferences.confirmDelete !== false && !confirm("Delete this project permanently?")) return;
 
 
     const result =
@@ -2550,7 +2823,7 @@ async function showProjectLibrary() {
 
 
     const result =
-        await window.diPseudoFlow.listProjects();
+        await window.diPseudoFlow.listProjects(currentProfile?.id);
 
 
     if (
@@ -2862,6 +3135,7 @@ document
                     tab.classList.add(
                         "active"
                     );
+                    if (window.dpfPreferences?.rememberLastWorkspace !== false && currentProfile) localStorage.setItem("dpf-last-workspace-" + currentProfile.id, target);
 
 
                     document
@@ -2947,7 +3221,7 @@ function createId(prefix) {
    NODE CREATION
 ========================================================= */
 
-function getDefaultNodeSize(type) {
+function getBaseDefaultNodeSize(type) {
 
     if (type === "connection") return { width: 60, height: 60 };
 
@@ -2982,6 +3256,13 @@ function getDefaultNodeSize(type) {
         width: 180,
         height: 70
     };
+}
+
+
+function getDefaultNodeSize(type) {
+    const base=getBaseDefaultNodeSize(type);
+    const scale=window.dpfPreferences?.defaultShapeSize==="small"?0.85:window.dpfPreferences?.defaultShapeSize==="large"?1.15:1;
+    return {width:Math.round(base.width*scale),height:Math.round(base.height*scale)};
 }
 
 
@@ -3808,7 +4089,7 @@ function renderFlowNode(
     }
 
 
-    if (selectedFlowTool === "connector") {
+    if (selectedFlowTool === "connector" && window.dpfPreferences.showConnectionPoints !== false) {
         createConnectorAnchors(group, node);
     }
 
@@ -3846,11 +4127,24 @@ function getNodeAnchorPositions(node) {
     }
     if (node.type === "input-output") {
         const skew = Math.min(30, node.width * 0.18);
+        const topLeft = { x: left + skew, y: top };
+        const topRight = { x: right, y: top };
+        const bottomRight = { x: right - skew, y: bottom };
+        const bottomLeft = { x: left, y: bottom };
+        const along = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
         return {
-            top: { x: middleX + skew / 2, y: top },
-            right: { x: right - skew / 2, y: middleY },
-            bottom: { x: middleX - skew / 2, y: bottom },
-            left: { x: left + skew / 2, y: middleY }
+            top: along(topLeft, topRight, 0.5),
+            "top-left": along(topLeft, topRight, 0.25),
+            "top-right": along(topLeft, topRight, 0.75),
+            right: along(topRight, bottomRight, 0.5),
+            "right-upper": along(topRight, bottomRight, 0.25),
+            "right-lower": along(topRight, bottomRight, 0.75),
+            bottom: along(bottomLeft, bottomRight, 0.5),
+            "bottom-left": along(bottomLeft, bottomRight, 0.25),
+            "bottom-right": along(bottomLeft, bottomRight, 0.75),
+            left: along(topLeft, bottomLeft, 0.5),
+            "left-upper": along(topLeft, bottomLeft, 0.25),
+            "left-lower": along(topLeft, bottomLeft, 0.75)
         };
     }
     return {
@@ -5367,15 +5661,18 @@ function getConnectorGeometry(connector, from, to) {
         : (fromCenter.y >= toCenter.y ? "bottom" : "top");
     const fromSide = connector.fromSide && connector.fromSide !== "auto" ? connector.fromSide : autoFrom;
     const toSide = connector.toSide && connector.toSide !== "auto" ? connector.toSide : autoTo;
+    const directionOf = side => String(side || "").split("-")[0];
+    const fromDirection = directionOf(fromSide);
+    const toDirection = directionOf(toSide);
     const start = getNodeAnchorPositions(from)[fromSide];
     const targetAnchor = getNodeAnchorPositions(to)[toSide];
     const normals = { left: { x: -1, y: 0 }, right: { x: 1, y: 0 }, top: { x: 0, y: -1 }, bottom: { x: 0, y: 1 } };
     const clearance = to.id === "__connector_preview__" ? 0 : (connector.route === "orthogonal" ? 10 : 8);
-    const normal = normals[toSide];
+    const normal = normals[toDirection];
     // Leave a small visible gap before the arrow tip so it reads as connected, not welded into the shape.
     const end = { x: targetAnchor.x + normal.x * clearance, y: targetAnchor.y + normal.y * clearance };
     if (connector.route === "orthogonal") {
-        const fromNormal = normals[fromSide];
+        const fromNormal = normals[fromDirection];
         const lead = 26;
         const startLead = { x: start.x + fromNormal.x * lead, y: start.y + fromNormal.y * lead };
         const endLead = { x: end.x + normal.x * lead, y: end.y + normal.y * lead };
@@ -5947,7 +6244,11 @@ function getFlowchartSvgForExport() {
     stamp.setAttribute("font-size", "10");
     stamp.setAttribute("font-family", "Arial, sans-serif");
     stamp.setAttribute("fill", "#94a3b8");
-    stamp.textContent = `Di PseudoFlow Logics • ${projectTitle.value.trim() || "Untitled Project"} • Work ID ${ensureWorkStamp()} • Exported ${new Date().toLocaleString()}`;
+    const owner = currentProject.ownerDisplayName || currentProfile?.displayName || "Local User";
+    const username = currentProject.ownerUsername || currentProfile?.username;
+    const studentId = currentProfile && !currentProfile.isGuest ? String(currentProfile.schoolId || "").trim() : "";
+    const identity = studentId ? " (Student ID: " + studentId + ")" : (username ? " (@" + username + ")" : "");
+    stamp.textContent = "Di PseudoFlow Logics • " + (projectTitle.value.trim() || "Untitled Project") + " • By " + owner + identity + " • Work ID " + ensureWorkStamp(currentProject) + " • Exported " + new Date().toLocaleString();
     svg.appendChild(stamp);
     const transient = element => element.matches(".flow-resize-handle, .connector-anchor");
     const sourceElements = [flowchartCanvas, ...flowchartCanvas.querySelectorAll("*")].filter(element => !transient(element));
@@ -6537,6 +6838,7 @@ function showUpdateStatus(title, message, progress = null) {
 if (window.diPseudoFlow?.getVersion) {
     window.diPseudoFlow.getVersion().then(version => {
         document.getElementById("appVersion").textContent = version || "Unknown";
+        const versionSetting=document.getElementById("settingsVersion"); if(versionSetting) versionSetting.textContent=version||"Unknown";
     }).catch(() => { document.getElementById("appVersion").textContent = "Unavailable"; });
 }
 
@@ -6603,6 +6905,186 @@ document.getElementById("closeReleaseNotesButton").addEventListener("click", () 
 document.getElementById("closeUpdatePanel").addEventListener("click", () => { document.getElementById("updatePanel").hidden = true; });
 
 
+
+/* =========================================================
+   LOCAL PROFILE, DASHBOARD AND SETTINGS
+========================================================= */
+const PROFILE_AVATARS = ["🙂","😎","🧑‍🎓","👩‍🎓","👨‍💻","🦉","🐼","🚀","🌟","🎨"];
+const profileGate = document.getElementById("profileGate");
+const profileLoginForm = document.getElementById("profileLoginForm");
+const profileCreateForm = document.getElementById("profileCreateForm");
+const profileSettingsKey = () => "dpf-settings-" + (currentProfile?.id || "guest");
+
+function setProfileError(id, message) { const el=document.getElementById(id); if(el) el.textContent=message || ""; }
+function showProfileForm(kind) {
+    profileLoginForm.hidden = kind !== "login";
+    profileCreateForm.hidden = kind !== "create";
+    document.getElementById("profileRecoveryForm").hidden=kind!=="recovery";
+    setProfileError("loginError", ""); setProfileError("createError", ""); setProfileError("recoveryError", "");
+}
+function renderAvatarChoices(hostId="avatarChoices", inputId="profileAvatar", selected="🙂") {
+    const host=document.getElementById(hostId); host.replaceChildren();
+    document.getElementById(inputId).value=selected;
+    PROFILE_AVATARS.forEach(avatar=>{
+        const button=document.createElement("button"); button.type="button"; button.className="avatar-choice"+(avatar===selected?" selected":""); button.textContent=avatar; button.setAttribute("aria-label","Choose avatar "+avatar);
+        button.addEventListener("click",()=>{document.getElementById(inputId).value=avatar;host.querySelectorAll(".avatar-choice").forEach(x=>x.classList.toggle("selected",x===button));}); host.appendChild(button);
+    });
+}
+function greetingText() { const h=new Date().getHours(); return h<12?"Good morning":h<18?"Good afternoon":"Good evening"; }
+function activateProfile(profile) {
+    currentProfile=profile;
+    if(currentProject?.profileId===profile.id || (!profile.isGuest && currentProject?.profileId==="guest-local")){currentProject.profileId=profile.id;currentProject.ownerDisplayName=profile.displayName||"";currentProject.ownerUsername=profile.username||"";}
+    document.getElementById("sidebarAvatar").textContent=profile.avatar || "🙂";
+    document.getElementById("sidebarProfileName").textContent=profile.displayName || profile.firstName || "Profile";
+    document.getElementById("sidebarProfileUsername").textContent=profile.isGuest?"Guest mode":"@"+(profile.username || "");
+    document.getElementById("signOutButton").textContent=profile.isGuest?"Guest mode":"Switch to Guest";
+    document.getElementById("dashboardGreeting").textContent=greetingText()+", "+(profile.firstName || "Guest");
+    profileGate.hidden=true; document.getElementById("welcomeScreen").style.display="none";
+    try { window.dpfPreferences={...DEFAULT_DPF_PREFERENCES,...JSON.parse(localStorage.getItem(profileSettingsKey())||"{}")} } catch (_) { window.dpfPreferences={...DEFAULT_DPF_PREFERENCES}; }
+    applyPreferences(); initializeHome();
+}
+function activateGuest() {
+    activateProfile({id:"guest-local",firstName:"Guest",lastName:"",username:"guest",displayName:"Guest",avatar:"🙂",isGuest:true});
+}
+function switchToGuest() {
+    if(projectDirty&&!confirm("You have unsaved changes. Switch to Guest mode anyway?"))return false;
+    const guest={id:"guest-local",firstName:"Guest",lastName:"",username:"guest",displayName:"Guest",avatar:"🙂",isGuest:true};
+    currentProfile=guest;currentProject=createNewProjectObject();currentProject.pseudocode="";currentProject.title="";currentProject.question="";projectDirty=false;updateProjectFieldsFromState();projectModifiedText.textContent="New project";
+    activateProfile(guest);return true;
+}
+function initializeProfileGate() { renderAvatarChoices(); activateGuest(); }
+document.getElementById("showCreateProfile").addEventListener("click",()=>showProfileForm("create"));
+document.getElementById("continueGuestFromLogin").addEventListener("click",()=>{profileGate.hidden=true;activateGuest();});
+document.getElementById("continueGuestFromCreate").addEventListener("click",()=>{profileGate.hidden=true;activateGuest();showProfilePage();});
+document.getElementById("showLoginProfile").addEventListener("click",()=>showProfileForm("login"));
+document.getElementById("showRecoveryForm").addEventListener("click",()=>{document.getElementById("recoveryUsername").value=document.getElementById("loginUsername").value.trim();document.getElementById("recoveryQuestionText").textContent="";showProfileForm("recovery");});
+document.getElementById("backToLogin").addEventListener("click",()=>showProfileForm("login"));
+profileCreateForm.addEventListener("submit",async event=>{
+    event.preventDefault(); setProfileError("createError","");
+    const profile={firstName:document.getElementById("profileFirstName").value.trim(),lastName:document.getElementById("profileLastName").value.trim(),username:document.getElementById("profileUsername").value.trim(),password:document.getElementById("profilePassword").value,recoveryQuestion:document.getElementById("profileRecoveryQuestion").value.trim(),recoveryAnswer:document.getElementById("profileRecoveryAnswer").value,schoolName:document.getElementById("profileSchoolName").value.trim(),schoolId:document.getElementById("profileSchoolId").value.trim(),avatar:document.getElementById("profileAvatar").value};
+    try { const result=await window.diPseudoFlow.createProfile(profile); if(!result?.success) throw new Error(result?.error||"Could not create profile."); profileGate.hidden=true; activateProfile(result.profile); showProfilePage(); }
+    catch(error) { setProfileError("createError",error.message||"Could not create profile."); }
+});
+profileLoginForm.addEventListener("submit",async event=>{
+    event.preventDefault(); setProfileError("loginError","");
+    try { const result=await window.diPseudoFlow.loginProfile({username:document.getElementById("loginUsername").value.trim(),password:document.getElementById("loginPassword").value}); if(!result?.success) throw new Error(result?.error||"Username or password is incorrect."); profileGate.hidden=true; activateProfile(result.profile); showProfilePage(); }
+    catch(error) { setProfileError("loginError",error.message||"Sign in failed."); }
+});
+let recoveryQuestionLoadedFor="";
+document.getElementById("loadRecoveryQuestion").addEventListener("click",async()=>{
+    const username=document.getElementById("recoveryUsername").value.trim();const label=document.getElementById("recoveryQuestionText");label.textContent="";recoveryQuestionLoadedFor="";
+    if(!username){setProfileError("recoveryError","Enter your username first.");return;}
+    const result=await window.diPseudoFlow.recoveryQuestion(username);if(!result?.success){setProfileError("recoveryError",result?.error||"No recovery question found.");return;}
+    recoveryQuestionLoadedFor=username.toLowerCase();label.textContent=result.recoveryQuestion;setProfileError("recoveryError","");
+});
+document.getElementById("profileRecoveryForm").addEventListener("submit",async event=>{
+    event.preventDefault();setProfileError("recoveryError","");const username=document.getElementById("recoveryUsername").value.trim();
+    if(recoveryQuestionLoadedFor!==username.toLowerCase()){setProfileError("recoveryError","Show your recovery question before resetting the password.");return;}
+    const result=await window.diPseudoFlow.recoverProfile({username,recoveryAnswer:document.getElementById("recoveryAnswer").value,newPassword:document.getElementById("recoveryNewPassword").value});
+    if(!result?.success){setProfileError("recoveryError",result?.error||"Password recovery failed.");return;}
+    showProfileForm("login");document.getElementById("loginUsername").value=username;setProfileError("loginError","Password reset. Sign in with your new password.");
+});
+
+function showProfilePage() {
+    const app=document.getElementById("appRoot");app.classList.remove("home-mode","settings-mode");app.classList.add("profile-mode");
+    ["navHome","navProjects","navSettings","navProfile"].forEach(id=>document.getElementById(id).classList.toggle("active",id==="navProfile"));
+    const guest=Boolean(currentProfile?.isGuest);document.getElementById("profileModeMessage").textContent=guest?"You are using Guest mode. Your projects stay on this computer. No sign-up is required.":"Edit your local profile and recovery details. Profile information never leaves this computer.";
+    document.getElementById("profileEditCard").hidden=guest;
+    document.getElementById("profileCreateAccount").hidden=!guest;document.getElementById("profileSignIn").hidden=!guest;document.getElementById("profileUseGuest").hidden=guest;
+    if(!guest){document.getElementById("editFirstName").value=currentProfile.firstName||"";document.getElementById("editLastName").value=currentProfile.lastName||"";document.getElementById("editUsername").value=currentProfile.username||"";document.getElementById("editSchoolName").value=currentProfile.schoolName||"";document.getElementById("editSchoolId").value=currentProfile.schoolId||"";document.getElementById("editRecoveryQuestion").value=currentProfile.recoveryQuestion||"";document.getElementById("editRecoveryAnswer").value="";document.getElementById("editCurrentPassword").value="";document.getElementById("editNewPassword").value="";renderAvatarChoices("editAvatarChoices","editAvatar",currentProfile.avatar||"🙂");}
+}
+document.getElementById("profileCreateAccount").addEventListener("click",()=>{profileGate.hidden=false;showProfileForm("create");});
+document.getElementById("profileSignIn").addEventListener("click",()=>{profileGate.hidden=false;showProfileForm("login");});
+document.getElementById("profileUseGuest").addEventListener("click",()=>{if(switchToGuest())showProfilePage();});
+document.getElementById("profileEditForm").addEventListener("submit",async event=>{
+    event.preventDefault();setProfileError("profileEditError","");
+    const result=await window.diPseudoFlow.updateProfile({id:currentProfile.id,firstName:document.getElementById("editFirstName").value.trim(),lastName:document.getElementById("editLastName").value.trim(),username:document.getElementById("editUsername").value.trim(),schoolName:document.getElementById("editSchoolName").value.trim(),schoolId:document.getElementById("editSchoolId").value.trim(),avatar:document.getElementById("editAvatar").value,recoveryQuestion:document.getElementById("editRecoveryQuestion").value.trim(),recoveryAnswer:document.getElementById("editRecoveryAnswer").value,currentPassword:document.getElementById("editCurrentPassword").value,newPassword:document.getElementById("editNewPassword").value});
+    if(!result?.success){setProfileError("profileEditError",result?.error||"Could not save your profile.");return;}
+    activateProfile(result.profile);showProfilePage();setProfileError("profileEditError","Profile saved.");
+});
+document.querySelectorAll('[data-setting="editorFontSize"]').forEach(control=>control.addEventListener("input",()=>{
+    const size=Number(control.value);
+    if(!Number.isFinite(size)||size<10||size>28)return;
+    window.dpfPreferences.editorFontSize=size;
+    localStorage.setItem(profileSettingsKey(),JSON.stringify(window.dpfPreferences));
+    applyPreferences();
+}));
+document.querySelectorAll("[data-setting]").forEach(control=>control.addEventListener("change",()=>{
+    const key=control.dataset.setting; let value=control.type==="checkbox"?control.checked:control.value;
+    if(control.type==="number") value=Number(value);
+    window.dpfPreferences[key]=value;
+    localStorage.setItem(profileSettingsKey(),JSON.stringify(window.dpfPreferences));
+    applyPreferences();
+}));
+function syncSettingsControls() {
+    document.querySelectorAll("[data-setting]").forEach(control=>{const value=window.dpfPreferences[control.dataset.setting]; if(control.type==="checkbox") control.checked=value!==false; else if(value!==undefined) control.value=String(value);});
+}
+function applyPreferences() {
+    const p=window.dpfPreferences||DEFAULT_DPF_PREFERENCES;
+    document.body.dataset.theme=p.theme==="system"?(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):p.theme;
+    document.body.dataset.uiScale=p.uiScale||"default";
+    document.documentElement.style.setProperty("--accent-color",p.accentColor||"#6366f1");
+    document.documentElement.style.setProperty("--editor-font-size",(Number(p.editorFontSize)||14)+"px");
+    flowGridEnabled=p.showGrid!==false; flowSnapEnabled=p.snapToGrid!==false;
+    if(flowchartCanvasWrapper){flowchartCanvasWrapper.style.backgroundImage=flowGridEnabled?"radial-gradient(circle, rgba(148, 163, 184, 0.22) 1px, transparent 1px)":"none"; const grid=document.getElementById("flowGridToggle");if(grid)grid.textContent=flowGridEnabled?"Grid ✓":"Grid";const snap=document.getElementById("flowSnapToggle");if(snap)snap.textContent=flowSnapEnabled?"Snap ✓":"Snap";}
+    const points=document.getElementById("flowchartCanvas"); if(points) points.classList.toggle("hide-connection-points",p.showConnectionPoints===false);
+    const marker=document.getElementById("flowArrow"); if(marker){marker.setAttribute("markerWidth",p.arrowStyle==="compact"?"7":"10");marker.setAttribute("markerHeight",p.arrowStyle==="compact"?"7":"10");}
+    const editorFontSize=(Number(p.editorFontSize)||14)+"px";
+    ["pseudocode","highlightLayer","lineNumbers"].forEach(id=>{const layer=document.getElementById(id);if(layer)layer.style.fontSize=editorFontSize;});
+    if(typeof updateEditorVisuals==="function")updateEditorVisuals();
+    const outputPanel=document.querySelector(".output-panel");if(outputPanel)outputPanel.hidden=p.showExecutionMessages===false;
+    syncSettingsControls();
+}
+
+function showHome() { const app=document.getElementById("appRoot");app.classList.add("home-mode");app.classList.remove("settings-mode","profile-mode");["navHome","navProjects","navSettings","navProfile"].forEach(id=>document.getElementById(id).classList.toggle("active",id==="navHome"));refreshDashboardRecentProjects(); }
+function showSettings() { const app=document.getElementById("appRoot");app.classList.remove("home-mode","profile-mode");app.classList.add("settings-mode");["navHome","navProjects","navSettings","navProfile"].forEach(id=>document.getElementById(id).classList.toggle("active",id==="navSettings"));syncSettingsControls(); }
+function showWorkspace(target="editorWorkspace") {
+    const app=document.getElementById("appRoot");app.classList.remove("home-mode","settings-mode","profile-mode");
+    document.querySelectorAll(".workspace-tab").forEach(tab=>tab.classList.toggle("active",tab.dataset.workspace===target));
+    document.querySelectorAll(".workspace-view").forEach(view=>view.classList.toggle("active",view.id===target));
+    document.getElementById("navHome").classList.remove("active");document.getElementById("navSettings").classList.remove("active");document.getElementById("navProjects").classList.remove("active");document.getElementById("navProfile").classList.remove("active");
+}
+function relativeProjectTime(value) { if(!value)return "Not saved yet";const delta=Math.max(0,Date.now()-new Date(value).getTime());const mins=Math.floor(delta/60000);if(mins<1)return "Just now";if(mins<60)return mins+" min"+(mins===1?"":"s")+" ago";const hrs=Math.floor(mins/60);if(hrs<24)return hrs+" hour"+(hrs===1?"":"s")+" ago";const days=Math.floor(hrs/24);return days===1?"Yesterday":days+" days ago"; }
+async function refreshDashboardRecentProjects() {
+    const host=document.getElementById("dashboardRecentProjects");if(!host||!currentProfile)return;
+    host.replaceChildren();
+    try { const result=await window.diPseudoFlow.listProjects(currentProfile.id);const projects=result?.projects||[];if(!projects.length){host.innerHTML='<div class="dashboard-empty">No projects yet. Start a new project or open one you have saved.</div>';return;}
+        projects.slice(0,4).forEach(project=>{const card=document.createElement("article");card.className="dashboard-project-card";const title=document.createElement("h3");title.textContent=project.title||"Untitled project";const stamp=document.createElement("p");stamp.textContent="Work ID: "+(project.workStamp||"Pending");const pseudo=document.createElement("p");pseudo.textContent="Pseudocode  "+(project.hasPseudocode?"✓":"—");const flow=document.createElement("p");flow.textContent="Flowchart  "+(project.hasFlowchart?"✓":"—");const time=document.createElement("p");time.textContent=relativeProjectTime(project.modified||project.created);const open=document.createElement("button");open.className="open-recent";open.type="button";open.textContent="OPEN";open.addEventListener("click",()=>loadProject(project.id));card.append(title,stamp,pseudo,flow,time,open);host.appendChild(card);});
+    } catch (_) {host.innerHTML='<div class="dashboard-empty">Projects could not be loaded.</div>';}
+}
+function initializeHome() {
+    syncSettingsControls();
+    const settingsVersion=document.getElementById("settingsVersion");const version=document.getElementById("appVersion");if(settingsVersion&&version)settingsVersion.textContent=version.textContent;
+    const p=window.dpfPreferences;
+    const lastId=localStorage.getItem("dpf-last-project-"+currentProfile.id);
+    const openLast=p.openLastProject&&lastId;
+    if(openLast) loadProject(lastId).catch(()=>showHome());
+    else if(p.showHomeOnStartup!==false) showHome();
+    else showWorkspace(localStorage.getItem("dpf-last-workspace-"+currentProfile.id)||"editorWorkspace");
+    refreshDashboardRecentProjects();
+    if(p.autoCheckUpdates) document.getElementById("checkForUpdatesButton").click();
+}
+document.getElementById("navHome").addEventListener("click",showHome);
+document.getElementById("navProjects").addEventListener("click",()=>{document.getElementById("appRoot").classList.remove("home-mode","settings-mode","profile-mode");["navHome","navProjects","navSettings","navProfile"].forEach(id=>document.getElementById(id).classList.toggle("active",id==="navProjects"));showProjectLibrary();});
+document.getElementById("navSettings").addEventListener("click",showSettings);
+document.getElementById("navProfile").addEventListener("click",showProfilePage);
+document.getElementById("headerSettingsButton").addEventListener("click",showSettings);
+document.getElementById("dashboardNewProject").addEventListener("click",()=>{newProject();showWorkspace("editorWorkspace");});
+document.getElementById("dashboardOpenProject").addEventListener("click",showProjectLibrary);
+document.getElementById("dashboardAllProjects").addEventListener("click",showProjectLibrary);
+document.getElementById("settingsCheckUpdates").addEventListener("click",()=>document.getElementById("checkForUpdatesButton").click());
+document.getElementById("headerHelpButton").addEventListener("click",()=>document.getElementById("helpDialog").showModal());
+document.getElementById("closeHelpDialog").addEventListener("click",()=>document.getElementById("helpDialog").close());
+document.getElementById("signOutButton").addEventListener("click",()=>{if(currentProfile?.isGuest){showProfilePage();return;}if(switchToGuest())showProfilePage();});
+document.getElementById("flowGridToggle").addEventListener("click",()=>{setTimeout(()=>{window.dpfPreferences.showGrid=flowGridEnabled;localStorage.setItem(profileSettingsKey(),JSON.stringify(window.dpfPreferences));syncSettingsControls();},0);});
+document.getElementById("flowSnapToggle").addEventListener("click",()=>{setTimeout(()=>{window.dpfPreferences.snapToGrid=flowSnapEnabled;localStorage.setItem(profileSettingsKey(),JSON.stringify(window.dpfPreferences));syncSettingsControls();},0);});
+let autoSaveTimer=null;
+function resetAutoSaveTimer(){if(autoSaveTimer)clearInterval(autoSaveTimer);const p=window.dpfPreferences||{};if(!p.autoSave)return;autoSaveTimer=setInterval(()=>{if(projectDirty&&projectTitle.value.trim())saveCurrentProject();},Math.max(1,Number(p.autoSaveInterval)||5)*60000);}
+const originalApplyPreferences=applyPreferences;
+applyPreferences=function(){originalApplyPreferences();resetAutoSaveTimer();};
+window.matchMedia("(prefers-color-scheme: light)").addEventListener?.("change",()=>{if(window.dpfPreferences.theme==="system")applyPreferences();});
+initializeProfileGate();
+
 /* =========================================================
    INITIAL PROJECT
 ========================================================= */
@@ -6628,3 +7110,4 @@ setFlowTool("select");
 </body>
 
 </html>
+

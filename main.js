@@ -8,6 +8,7 @@ const {
 
 const path = require("path");
 const fs = require("fs");
+const crypto = require("crypto");
 
 const { autoUpdater } = require("electron-updater");
 
@@ -117,6 +118,161 @@ function createWindow() {
     );
 }
 
+
+function getProfilesFilePath() {
+    return path.join(app.getPath("userData"), "profiles.json");
+}
+
+function readProfiles() {
+    const filePath = getProfilesFilePath();
+    if (!fs.existsSync(filePath)) return [];
+    try {
+        const profiles = JSON.parse(fs.readFileSync(filePath, "utf8"));
+        return Array.isArray(profiles) ? profiles : [];
+    } catch (error) {
+        console.error("Could not read local profiles:", error);
+        return [];
+    }
+}
+
+function writeProfiles(profiles) {
+    const filePath = getProfilesFilePath();
+    const temporaryPath = filePath + ".tmp";
+    fs.writeFileSync(temporaryPath, JSON.stringify(profiles, null, 2), { encoding: "utf8", mode: 0o600 });
+    fs.renameSync(temporaryPath, filePath);
+}
+
+function publicProfile(profile) {
+    const { passwordHash, passwordSalt, recoveryAnswerHash, recoveryAnswerSalt, ...safeProfile } = profile;
+    return safeProfile;
+}
+
+ipcMain.handle("profile:list", () => readProfiles().map(publicProfile));
+
+ipcMain.handle("profile:create", (_event, input = {}) => {
+    try {
+        const firstName = String(input.firstName || "").trim().slice(0, 50);
+        const lastName = String(input.lastName || "").trim().slice(0, 50);
+        const username = String(input.username || "").trim().toLowerCase().slice(0, 32);
+        const password = String(input.password || "");
+        const schoolName = String(input.schoolName || "").trim().slice(0, 100);
+        const schoolId = String(input.schoolId || "").trim().slice(0, 60);
+        const avatar = String(input.avatar || "🙂").slice(0, 12);
+        const recoveryQuestion = String(input.recoveryQuestion || "").trim().slice(0, 180);
+        const recoveryAnswer = String(input.recoveryAnswer || "").trim().toLowerCase();
+        if (!firstName || !lastName) throw new Error("Enter your first and last name.");
+        if (!/^[a-z0-9._-]{3,32}$/.test(username)) throw new Error("Username must be 3–32 characters and use letters, numbers, dots, dashes, or underscores.");
+        if (password.length < 8 || password.length > 128) throw new Error("Password must be between 8 and 128 characters.");
+        if (!recoveryQuestion || recoveryAnswer.length < 2) throw new Error("Add a recovery question and an answer with at least 2 characters.");
+        const profiles = readProfiles();
+        if (profiles.some(profile => profile.username.toLowerCase() === username)) throw new Error("That username is already in use on this computer.");
+        const passwordSalt = crypto.randomBytes(16).toString("hex");
+        const passwordHash = crypto.scryptSync(password, passwordSalt, 64).toString("hex");
+        const recoveryAnswerSalt = crypto.randomBytes(16).toString("hex");
+        const recoveryAnswerHash = crypto.scryptSync(recoveryAnswer, recoveryAnswerSalt, 64).toString("hex");
+        const profile = {
+            id: crypto.randomUUID(), firstName, lastName, username,
+            displayName: firstName + " " + lastName, schoolName, schoolId, avatar,
+            created: new Date().toISOString(), passwordSalt, passwordHash, recoveryQuestion, recoveryAnswerSalt, recoveryAnswerHash
+        };
+        profiles.push(profile);
+        writeProfiles(profiles);
+        claimGuestProjects(profile);
+        return { success: true, profile: publicProfile(profile) };
+    } catch (error) {
+        return { success: false, error: error.message || "Could not create the profile." };
+    }
+});
+
+function claimGuestProjects(profile) {
+    const directory = getProjectsDirectory();
+    for (const name of fs.readdirSync(directory)) {
+        if (!name.endsWith(".json")) continue;
+        const filePath = path.join(directory, name);
+        try {
+            const project = JSON.parse(fs.readFileSync(filePath, "utf8"));
+            if (project.profileId === "guest-local") {
+                project.profileId = profile.id;
+                project.ownerDisplayName = profile.displayName;
+                project.ownerUsername = profile.username;
+                fs.writeFileSync(filePath, JSON.stringify(project, null, 4), "utf8");
+            }
+        } catch (error) { console.warn("Could not associate guest project with new profile:", name, error); }
+    }
+}
+
+ipcMain.handle("profile:recovery-question", (_event, username) => {
+    const normalized = String(username || "").trim().toLowerCase();
+    const profile = readProfiles().find(item => item.username.toLowerCase() === normalized);
+    if (!profile || !profile.recoveryQuestion) return { success: false, error: "No recovery question is available for that username." };
+    return { success: true, recoveryQuestion: profile.recoveryQuestion };
+});
+
+ipcMain.handle("profile:recover", (_event, input = {}) => {
+    try {
+        const username = String(input.username || "").trim().toLowerCase();
+        const answer = String(input.recoveryAnswer || "").trim().toLowerCase();
+        const newPassword = String(input.newPassword || "");
+        const profiles = readProfiles();
+        const profile = profiles.find(item => item.username.toLowerCase() === username);
+        if (!profile || !profile.recoveryAnswerHash) throw new Error("Recovery details could not be verified.");
+        if (newPassword.length < 8 || newPassword.length > 128) throw new Error("New password must be between 8 and 128 characters.");
+        const attempt = crypto.scryptSync(answer, profile.recoveryAnswerSalt, 64);
+        const saved = Buffer.from(profile.recoveryAnswerHash, "hex");
+        if (attempt.length !== saved.length || !crypto.timingSafeEqual(attempt, saved)) throw new Error("Recovery details could not be verified.");
+        profile.passwordSalt = crypto.randomBytes(16).toString("hex");
+        profile.passwordHash = crypto.scryptSync(newPassword, profile.passwordSalt, 64).toString("hex");
+        writeProfiles(profiles);
+        return { success: true };
+    } catch (error) { return { success: false, error: error.message || "Password recovery failed." }; }
+});
+
+ipcMain.handle("profile:update", (_event, input = {}) => {
+    try {
+        const profiles = readProfiles();
+        const profile = profiles.find(item => item.id === String(input.id || ""));
+        if (!profile) throw new Error("Profile not found.");
+        const currentPassword = String(input.currentPassword || "");
+        const verify = crypto.scryptSync(currentPassword, profile.passwordSalt, 64);
+        const savedPassword = Buffer.from(profile.passwordHash, "hex");
+        if (verify.length !== savedPassword.length || !crypto.timingSafeEqual(verify, savedPassword)) throw new Error("Enter your current password to save profile changes.");
+        const firstName = String(input.firstName || "").trim().slice(0, 50);
+        const lastName = String(input.lastName || "").trim().slice(0, 50);
+        const username = String(input.username || "").trim().toLowerCase().slice(0, 32);
+        if (!firstName || !lastName) throw new Error("Enter your first and last name.");
+        if (!/^[a-z0-9._-]{3,32}$/.test(username)) throw new Error("Username must be 3–32 characters and use letters, numbers, dots, dashes, or underscores.");
+        if (profiles.some(item => item.id !== profile.id && item.username.toLowerCase() === username)) throw new Error("That username is already in use on this computer.");
+        profile.firstName=firstName; profile.lastName=lastName; profile.displayName=firstName+" "+lastName; profile.username=username;
+        profile.schoolName=String(input.schoolName||"").trim().slice(0,100); profile.schoolId=String(input.schoolId||"").trim().slice(0,60); profile.avatar=String(input.avatar||"🙂").slice(0,12);
+        const question=String(input.recoveryQuestion||"").trim().slice(0,180); const answer=String(input.recoveryAnswer||"").trim().toLowerCase();
+        if (Boolean(question) !== Boolean(answer)) throw new Error("Enter both the recovery question and its answer, or leave both unchanged.");
+        if (question && answer) { profile.recoveryQuestion=question; profile.recoveryAnswerSalt=crypto.randomBytes(16).toString("hex"); profile.recoveryAnswerHash=crypto.scryptSync(answer,profile.recoveryAnswerSalt,64).toString("hex"); }
+        const newPassword=String(input.newPassword||"");
+        if (newPassword) { if(newPassword.length<8||newPassword.length>128)throw new Error("New password must be between 8 and 128 characters.");profile.passwordSalt=crypto.randomBytes(16).toString("hex");profile.passwordHash=crypto.scryptSync(newPassword,profile.passwordSalt,64).toString("hex"); }
+        writeProfiles(profiles);
+        for (const name of fs.readdirSync(getProjectsDirectory())) {
+            if (!name.endsWith(".json")) continue;
+            const projectPath=path.join(getProjectsDirectory(),name);
+            try { const project=JSON.parse(fs.readFileSync(projectPath,"utf8")); if(project.profileId===profile.id){project.ownerDisplayName=profile.displayName;project.ownerUsername=profile.username;fs.writeFileSync(projectPath,JSON.stringify(project,null,4),"utf8");} } catch(error) { console.warn("Could not refresh profile stamp on project:",name,error); }
+        }
+        return {success:true,profile:publicProfile(profile)};
+    } catch(error) { return {success:false,error:error.message||"Could not update profile."}; }
+});
+
+ipcMain.handle("profile:login", (_event, input = {}) => {
+    try {
+        const username = String(input.username || "").trim().toLowerCase();
+        const password = String(input.password || "");
+        const profile = readProfiles().find(item => item.username.toLowerCase() === username);
+        if (!profile) throw new Error("Username or password is incorrect.");
+        const attempt = crypto.scryptSync(password, profile.passwordSalt, 64);
+        const saved = Buffer.from(profile.passwordHash, "hex");
+        if (attempt.length !== saved.length || !crypto.timingSafeEqual(attempt, saved)) throw new Error("Username or password is incorrect.");
+        return { success: true, profile: publicProfile(profile) };
+    } catch (error) {
+        return { success: false, error: error.message || "Could not sign in." };
+    }
+});
 
 /* =========================================================
    PROJECT IPC
@@ -326,7 +482,7 @@ ipcMain.handle(
 
 ipcMain.handle(
     "project:list",
-    async () => {
+    async (_event, profileId) => {
 
         try {
 
@@ -374,6 +530,7 @@ ipcMain.handle(
                             fileContents
                         );
 
+                    if (profileId && project.profileId && project.profileId !== profileId) continue;
 
                     projects.push({
 
@@ -394,7 +551,10 @@ ipcMain.handle(
 
                         modified:
                             project.modified
-                            || null
+                            || null,
+
+                        hasPseudocode: Boolean(project.pseudocode && project.pseudocode.trim()),
+                        hasFlowchart: Boolean(project.flowchart && Array.isArray(project.flowchart.nodes) && project.flowchart.nodes.length)
                     });
 
                 } catch (error) {
@@ -748,17 +908,7 @@ function setupAutoUpdater() {
     );
 
 
-    autoUpdater
-        .checkForUpdates()
-        .catch(
-            (error) => {
-
-                console.error(
-                    "Update check failed:",
-                    error
-                );
-            }
-        );
+    // Automatic checks are started by the renderer only when the signed-in profile enables them.
 }
 
 

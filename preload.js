@@ -11,6 +11,14 @@ contextBridge.exposeInMainWorld("diPseudoFlow", {
     },
     exportPdf: (svg, title) => ipcRenderer.invoke("export:pdf", { svg, title }),
 
+    // Local profile accounts (passwords are hashed in the main process)
+    listProfiles: () => ipcRenderer.invoke("profile:list"),
+    createProfile: (profile) => ipcRenderer.invoke("profile:create", profile),
+    loginProfile: (credentials) => ipcRenderer.invoke("profile:login", credentials),
+    recoveryQuestion: (username) => ipcRenderer.invoke("profile:recovery-question", username),
+    recoverProfile: (details) => ipcRenderer.invoke("profile:recover", details),
+    updateProfile: (details) => ipcRenderer.invoke("profile:update", details),
+
     // Project management
     saveProject: (project) =>
         ipcRenderer.invoke("project:save", project),
@@ -18,8 +26,8 @@ contextBridge.exposeInMainWorld("diPseudoFlow", {
     loadProject: (projectId) =>
         ipcRenderer.invoke("project:load", projectId),
 
-    listProjects: () =>
-        ipcRenderer.invoke("project:list"),
+    listProjects: (profileId) =>
+        ipcRenderer.invoke("project:list", profileId),
 
     deleteProject: (projectId) =>
         ipcRenderer.invoke("project:delete", projectId),
