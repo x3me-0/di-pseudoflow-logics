@@ -1050,6 +1050,18 @@
         .header-actions { display:flex; align-items:center; gap:8px; }
         .header-icon-button { width:40px;height:40px;padding:0;text-align:center;font-size:19px; }
         .dashboard-page,.settings-page { display:none; padding:28px clamp(18px,4vw,58px) 48px; min-height:65vh; }
+        /* The title and navigation already appear in the sidebar. */
+        .app-header { display:none !important; }
+        .project-workspace-bar { padding:10px 13px; margin-bottom:10px; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"details-header actions" "details-fields actions" "status status"; gap:9px 14px; }
+        .project-details-header { justify-content:flex-start; }
+        .project-details-summary { display:none; color:#94a3b8; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .project-workspace-bar.collapsed { grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"details-header actions" "status status"; padding:8px 13px; }
+        .project-workspace-bar.collapsed .project-details-summary { display:inline; }
+        .project-fields-stack { grid-template-columns:minmax(180px,.75fr) minmax(280px,1.25fr); align-items:start; }
+        .project-workspace-bar .project-actions { max-width:520px; }
+        .workspace-tabs { margin-bottom:10px; }
+        .workspace { padding:12px 14px 20px; grid-template-columns:minmax(0,1.55fr) minmax(340px,.9fr); gap:14px; }
+        @media(max-width:850px) { .project-fields-stack { grid-template-columns:1fr; } }
         /* Welcome is temporarily disabled; guest/profile startup now opens Home directly. */
         #welcomeScreen { display:none !important; }
         /* Keep the pseudocode and result panes bounded; long content scrolls inside each pane. */
@@ -1058,8 +1070,12 @@
         .workspace .editor-wrapper,.workspace .output-console { flex:1 1 auto; height:0; min-height:0; }
         .workspace .editor-wrapper { overflow:hidden; }
         .workspace .output-console { overflow-y:auto; }
+        .execution-current-line { background:rgba(99,102,241,.23); box-shadow:inset 3px 0 #a5b4fc,0 0 12px rgba(99,102,241,.18); border-radius:2px; }
+        .execution-current-gutter { display:inline-block; min-width:100%; color:#c4b5fd; background:rgba(99,102,241,.22); border-radius:3px; text-align:right; font-weight:800; }
+        #highlightLayer.trace-only { color:transparent !important; }
+        #highlightLayer.trace-only .hl-keyword,#highlightLayer.trace-only .hl-type,#highlightLayer.trace-only .hl-number,#highlightLayer.trace-only .hl-string,#highlightLayer.trace-only .hl-comment,#highlightLayer.trace-only .hl-operator,#highlightLayer.trace-only .hl-identifier { color:transparent !important; -webkit-text-fill-color:transparent !important; }
         @media (max-width:1000px) {
-          .workspace { height:auto; min-height:0; }
+          .workspace { height:auto; min-height:0; grid-template-columns:1fr; }
           .workspace .editor-panel,.workspace .output-panel { height:600px; min-height:0; }
         }
         .panel-resize-handle { flex:0 0 15px; display:flex; align-items:center; justify-content:center; width:100%; margin:0; padding:0; border:0; background:transparent; cursor:ns-resize; touch-action:none; }
@@ -1104,7 +1120,7 @@
         .profile-page-actions { display:flex;gap:8px;flex-wrap:wrap; }
         .profile-edit-form { max-width:720px; }
         .profile-edit-form label { display:grid;gap:7px;margin:14px 0;color:#aebbd0;font-size:13px; }
-        .profile-edit-form input { box-sizing:border-box;width:100%;padding:10px;border:1px solid #40506a;border-radius:7px;background:#0b1220;color:#e2e8f0; }
+        .profile-edit-form input,.profile-edit-form select { box-sizing:border-box;width:100%;padding:10px;border:1px solid #40506a;border-radius:7px;background:#0b1220;color:#e2e8f0; }
         .profile-recovery-question { font-weight:700; }
         .profile-gate { position:fixed;z-index:20000;inset:0;display:grid;place-items:center;padding:20px;overflow:auto;background:radial-gradient(circle at top,#182946,#070b13 72%);color:#e5e7eb; }
         .profile-gate-card { width:min(560px,100%);padding:28px;border:1px solid #334155;border-radius:18px;background:#101827;box-shadow:0 24px 80px #0009; }
@@ -1115,7 +1131,7 @@
         .profile-form h2 { margin:10px 0 5px;font-size:21px; }
         .profile-form>p { margin:0 0 18px;color:#94a3b8;font-size:13px; }
         .profile-form label { display:grid;gap:6px;margin:12px 0;color:#b9c5d6;font-size:12px;font-weight:700; }
-        .profile-form input { box-sizing:border-box;width:100%;padding:11px;border:1px solid #3b4b63;border-radius:8px;background:#0a111d;color:#f8fafc;font:inherit; }
+        .profile-form input,.profile-form select { box-sizing:border-box;width:100%;padding:11px;border:1px solid #3b4b63;border-radius:8px;background:#0a111d;color:#f8fafc;font:inherit; }
         .profile-form .profile-name-row { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
         .profile-form-actions { display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px; }
         .profile-submit { border:0;border-radius:8px;padding:11px 18px;background:#4f46e5;color:#fff;font-weight:800;cursor:pointer; }
@@ -1191,7 +1207,7 @@
       <div class="profile-name-row"><label>First name<input id="profileFirstName" autocomplete="given-name" maxlength="50" required></label><label>Last name<input id="profileLastName" autocomplete="family-name" maxlength="50" required></label></div>
       <label>Username<input id="profileUsername" autocomplete="username" minlength="3" maxlength="32" required></label>
       <label>Password<input id="profilePassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required><small>Use at least 8 characters.</small></label>
-      <label>Recovery question<input id="profileRecoveryQuestion" maxlength="180" placeholder="Example: What was the name of your first school?" required></label>
+      <label>Recovery question<select id="profileRecoveryQuestion" required><option value="">Choose a recovery question…</option><option>What was the name of your first school?</option><option>What was the name of your first pet?</option><option>What is the name of a teacher who inspired you?</option><option>What is your favorite book?</option><option>What city is a favorite place you have visited?</option></select></label>
       <label>Recovery answer<input id="profileRecoveryAnswer" maxlength="120" autocomplete="off" required><small>Your answer is stored securely on this computer.</small></label>
       <div class="profile-name-row"><label>School name <small>(optional)</small><input id="profileSchoolName" maxlength="100"></label><label>Student ID <small>(optional)</small><input id="profileSchoolId" maxlength="60"></label></div>
       <label>Choose an avatar<div class="avatar-choices" id="avatarChoices"></div><input id="profileAvatar" type="hidden" value="🙂"></label>
@@ -1298,7 +1314,7 @@
 <div class="app home-mode" id="appRoot">
 <aside class="app-sidebar" id="appSidebar">
   <div class="sidebar-brand"><img src="logo.png" alt=""><span>Di PseudoFlow<br>Logics</span></div>
-  <nav class="sidebar-nav" aria-label="Main navigation"><button id="navHome" class="active">🏠 Home</button><button id="navProjects">📁 Projects</button><button id="navSettings">⚙ Settings</button><button id="navProfile">👤 Profile</button></nav>
+  <nav class="sidebar-nav" aria-label="Main navigation"><button id="navHome" class="active">🏠 Home</button><button id="navProjects">📁 Projects</button><button id="navSettings">⚙ Settings</button><button id="navProfile">👤 Profile</button><button type="button" id="headerHelpButton" aria-label="Help" title="Help">❔ Help</button></nav>
   <div class="sidebar-profile"><div class="sidebar-profile-summary"><span class="profile-avatar" id="sidebarAvatar">🙂</span><span><strong id="sidebarProfileName">Profile</strong><br><small id="sidebarProfileUsername"></small></span></div><button id="signOutButton" class="sign-out">Guest mode</button></div>
 </aside>
 
@@ -1322,7 +1338,7 @@
 
         </div>
 
-        <div class="header-actions"><span class="header-badge">CPRG1201</span><button type="button" class="header-icon-button" id="headerSettingsButton" aria-label="Settings" title="Settings">⚙</button><button type="button" class="header-icon-button" id="headerHelpButton" aria-label="Help" title="Help">?</button></div>
+        <div class="header-actions"><span class="header-badge">CPRG1201</span><button type="button" class="header-icon-button" id="headerSettingsButton" aria-label="Settings" title="Settings">⚙</button><button type="button" class="header-icon-button" id="headerHelpButtonLegacy" aria-label="Help" title="Help">?</button></div>
 
     </header>
 
@@ -1363,6 +1379,8 @@
           <label class="settings-row">Step-by-step mode<input type="checkbox" data-setting="stepByStepMode"></label>
           <label class="settings-row">Show execution messages<input type="checkbox" data-setting="showExecutionMessages"></label>
           <label class="settings-row">Clear output before running<input type="checkbox" data-setting="clearOutputBeforeRun"></label>
+          <label class="settings-row">Trace running pseudocode<input type="checkbox" data-setting="traceExecution"></label>
+          <label class="settings-row">Output write-out speed<select data-setting="outputWriteSpeed"><option value="0">Fast (no extra delay)</option><option value="100">Normal</option><option value="250">Slow</option><option value="500">Very slow</option></select></label>
         </article>
         <article class="settings-card"><h3>💾 Projects</h3>
           <label class="settings-row">Auto-save<input type="checkbox" data-setting="autoSave"></label>
@@ -1393,7 +1411,7 @@
           <div class="profile-name-row"><label>School name (optional)<input id="editSchoolName" maxlength="100"></label><label>Student ID (optional)<input id="editSchoolId" maxlength="60"></label></div>
           <label>Avatar<div class="avatar-choices" id="editAvatarChoices"></div><input id="editAvatar" type="hidden" value="🙂"></label>
           <h3>Recovery and password</h3><p class="profile-edit-hint">Enter your current password to save changes. Leave recovery answer and new password blank to keep the current values.</p>
-          <label>Recovery question<input id="editRecoveryQuestion" maxlength="180" placeholder="Your recovery question"></label>
+          <label>Recovery question<select id="editRecoveryQuestion"><option value="">Choose a recovery question…</option><option>What was the name of your first school?</option><option>What was the name of your first pet?</option><option>What is the name of a teacher who inspired you?</option><option>What is your favorite book?</option><option>What city is a favorite place you have visited?</option></select></label>
           <label>New recovery answer<input id="editRecoveryAnswer" maxlength="120" autocomplete="off"></label>
           <label>New password<input id="editNewPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password"></label>
           <label>Current password<input id="editCurrentPassword" type="password" required autocomplete="current-password"></label>
@@ -1412,6 +1430,7 @@
 
         <div class="project-details-header">
             <strong>Project Details</strong>
+            <span class="project-details-summary" id="projectDetailsSummary"></span>
             <button type="button" class="project-action" id="projectDetailsToggle" aria-expanded="true" aria-controls="projectFieldsPanel">Collapse</button>
         </div>
 
@@ -2151,7 +2170,7 @@
 
 const DEFAULT_DPF_PREFERENCES = {
     theme:"dark",accentColor:"#6366f1",editorFontSize:14,uiScale:"default",showLineNumbers:true,autoIndent:true,syntaxHighlighting:true,indentSize:"4",normalizeQuotes:true,
-    showGrid:true,snapToGrid:true,defaultZoom:"1",defaultShapeSize:"default",arrowStyle:"standard",showConnectionPoints:true,stepByStepMode:false,showExecutionMessages:true,clearOutputBeforeRun:true,
+    showGrid:true,snapToGrid:true,defaultZoom:"1",defaultShapeSize:"default",arrowStyle:"standard",showConnectionPoints:true,stepByStepMode:false,showExecutionMessages:true,clearOutputBeforeRun:true,traceExecution:true,outputWriteSpeed:"0",
     autoSave:false,autoSaveInterval:5,confirmDelete:true,autoCheckUpdates:false,showHomeOnStartup:true,rememberLastWorkspace:true,openLastProject:false,showHomeLogo:true
 };
 let currentProfile = null;
@@ -2452,6 +2471,8 @@ function updateProjectStatus() {
         projectTitle.value.trim()
         ||
         "New Project";
+    const summary = document.getElementById("projectDetailsSummary");
+    if (summary) summary.textContent = projectTitle.value.trim() || "New Project";
 }
 
 
@@ -2550,6 +2571,8 @@ function newProject() {
 
 
     updateProjectFieldsFromState();
+    if (typeof clearProgram === "function") clearProgram();
+    setProjectDetailsCollapsed(false);
 
 
     projectModifiedText.textContent =
@@ -2565,16 +2588,7 @@ function newProject() {
     }
 
 
-    const pseudocode =
-        document.getElementById(
-            "pseudocode"
-        );
-
-
-    if (pseudocode) {
-
-        pseudocode.focus();
-    }
+    projectTitle.focus();
 }
 
 
@@ -2689,6 +2703,7 @@ async function saveCurrentProject() {
         formatProjectDate(
             currentProject.modified
         );
+    setProjectDetailsCollapsed(true);
     if (currentProfile && currentProject.id) localStorage.setItem("dpf-last-project-" + currentProfile.id, currentProject.id);
     refreshDashboardRecentProjects();
     updateProjectStatus();
@@ -2784,6 +2799,7 @@ async function loadProject(projectId) {
         formatProjectDate(
             currentProject.modified
         );
+    setProjectDetailsCollapsed(true);
     if (currentProfile && currentProject.id) localStorage.setItem("dpf-last-project-" + currentProfile.id, currentProject.id);
     closeProjectLibrary();
     showWorkspace(localStorage.getItem("dpf-last-workspace-" + (currentProfile?.id || "")) || "editorWorkspace");
@@ -3028,13 +3044,15 @@ const projectDetailsToggle = document.getElementById("projectDetailsToggle");
 function setProjectDetailsCollapsed(collapsed) {
     projectDetailsBar.classList.toggle("collapsed", collapsed);
     projectDetailsToggle.setAttribute("aria-expanded", String(!collapsed));
-    projectDetailsToggle.textContent = collapsed ? "Expand" : "Collapse";
+    projectDetailsToggle.textContent = collapsed ? "▸ Expand" : "▾ Collapse";
+    const summary = document.getElementById("projectDetailsSummary");
+    if (summary) summary.textContent = projectTitle.value.trim() || "New Project";
     localStorage.setItem("diPseudoFlowProjectDetailsCollapsed", String(collapsed));
 }
 projectDetailsToggle.addEventListener("click", () => {
     setProjectDetailsCollapsed(!projectDetailsBar.classList.contains("collapsed"));
 });
-setProjectDetailsCollapsed(localStorage.getItem("diPseudoFlowProjectDetailsCollapsed") === "true");
+setProjectDetailsCollapsed(localStorage.getItem("diPseudoFlowProjectDetailsCollapsed") !== "false");
 
 projectTitle.addEventListener(
     "input",
@@ -4143,12 +4161,17 @@ function getNodeAnchorPositions(node) {
         };
     }
     if (node.type === "connection") {
-        const radius = Math.min(node.width, node.height) / 2;
+        const radius = Math.max(8, Math.min(node.width, node.height) / 2);
+        const diagonal = radius / Math.sqrt(2);
         return {
             top: { x: middleX, y: middleY - radius },
+            "top-right": { x: middleX + diagonal, y: middleY - diagonal },
             right: { x: middleX + radius, y: middleY },
+            "bottom-right": { x: middleX + diagonal, y: middleY + diagonal },
             bottom: { x: middleX, y: middleY + radius },
-            left: { x: middleX - radius, y: middleY }
+            "bottom-left": { x: middleX - diagonal, y: middleY + diagonal },
+            left: { x: middleX - radius, y: middleY },
+            "top-left": { x: middleX - diagonal, y: middleY - diagonal }
         };
     }
     if (node.type === "input-output") {
@@ -6970,7 +6993,7 @@ function activateGuest() {
 function switchToGuest() {
     if(projectDirty&&!confirm("You have unsaved changes. Switch to Guest mode anyway?"))return false;
     const guest={id:"guest-local",firstName:"Guest",lastName:"",username:"guest",displayName:"Guest",avatar:"🙂",isGuest:true};
-    currentProfile=guest;currentProject=createNewProjectObject();currentProject.pseudocode="";currentProject.title="";currentProject.question="";projectDirty=false;updateProjectFieldsFromState();projectModifiedText.textContent="New project";
+    currentProfile=guest;currentProject=createNewProjectObject();currentProject.pseudocode="";currentProject.title="";currentProject.question="";projectDirty=false;updateProjectFieldsFromState();projectModifiedText.textContent="New project";setProjectDetailsCollapsed(false);if(typeof clearProgram==="function")clearProgram();
     activateProfile(guest);return true;
 }
 function initializeProfileGate() { renderAvatarChoices(); activateGuest(); }
@@ -7012,6 +7035,7 @@ function showProfilePage() {
     const guest=Boolean(currentProfile?.isGuest);document.getElementById("profileModeMessage").textContent=guest?"You are using Guest mode. Your projects stay on this computer. No sign-up is required.":"Edit your local profile and recovery details. Profile information never leaves this computer.";
     document.getElementById("profileEditCard").hidden=guest;
     document.getElementById("profileCreateAccount").hidden=!guest;document.getElementById("profileSignIn").hidden=!guest;document.getElementById("profileUseGuest").hidden=guest;
+    if(!guest){const q=document.getElementById("editRecoveryQuestion"),saved=currentProfile.recoveryQuestion||"";if(saved&&!Array.from(q.options).some(option=>option.value===saved)){const legacy=document.createElement("option");legacy.value=saved;legacy.textContent="Saved recovery question";q.appendChild(legacy);}q.value=saved;}
     if(!guest){document.getElementById("editFirstName").value=currentProfile.firstName||"";document.getElementById("editLastName").value=currentProfile.lastName||"";document.getElementById("editUsername").value=currentProfile.username||"";document.getElementById("editSchoolName").value=currentProfile.schoolName||"";document.getElementById("editSchoolId").value=currentProfile.schoolId||"";document.getElementById("editRecoveryQuestion").value=currentProfile.recoveryQuestion||"";document.getElementById("editRecoveryAnswer").value="";document.getElementById("editCurrentPassword").value="";document.getElementById("editNewPassword").value="";renderAvatarChoices("editAvatarChoices","editAvatar",currentProfile.avatar||"🙂");}
 }
 document.getElementById("profileCreateAccount").addEventListener("click",()=>{profileGate.hidden=false;showProfileForm("create");});
@@ -7056,6 +7080,7 @@ function applyPreferences() {
     ["pseudocode","highlightLayer","lineNumbers"].forEach(id=>{const layer=document.getElementById(id);if(layer)layer.style.fontSize=editorFontSize;});
     if(typeof updateEditorVisuals==="function")updateEditorVisuals();
     const outputPanel=document.querySelector(".output-panel");if(outputPanel)outputPanel.hidden=p.showExecutionMessages===false;
+    if(p.traceExecution===false&&typeof clearExecutionTracker==="function")clearExecutionTracker();
     syncSettingsControls();
 }
 
