@@ -3566,11 +3566,7 @@ function executeNextLine() {
                 }
 
 
-                const value =
-                    evaluateExpression(
-                        expression,
-                        variableName
-                    );
+                const value = evaluateExpression(expression);
 
 
                 validateValueForType(
