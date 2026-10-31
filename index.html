@@ -1037,6 +1037,27 @@
     
         /* Home dashboard, local profiles, and preferences */
         .app { width: calc(100% - 226px); margin-left: 226px; position: relative; }
+        .sidebar-toggle { position:fixed;z-index:300;top:12px;left:14px;width:42px;height:42px;display:grid;place-content:center;gap:4px;border:1px solid #334155;border-radius:9px;background:#111b2b;color:#e2e8f0;cursor:pointer; }
+        .sidebar-toggle span { display:block;width:19px;height:2px;border-radius:2px;background:currentColor; }
+        .sidebar-collapsed .app-sidebar { transform:translateX(-105%); }
+        .app-sidebar { transition:transform .18s ease; }
+        .sidebar-collapsed .app { width:100%;margin-left:0; }
+        .editor-actions-top { display:flex;align-items:center;gap:7px;flex-wrap:wrap; }
+        .editor-actions-top button,.editor-actions-top select,.focus-exit { border:1px solid #334155;border-radius:7px;padding:7px 9px;background:#111b2b;color:#dbe8f5;cursor:pointer;font:inherit;font-size:12px; }
+        .workspace.layout-stacked { grid-template-columns:minmax(0,1fr); }
+        .workspace.layout-stacked .editor-panel,.workspace.layout-stacked .output-panel { height:420px; }
+        .workspace.output-hidden { grid-template-columns:minmax(0,1fr); }
+        .focus-exit { position:fixed;z-index:500;top:12px;right:14px; }
+        #appRoot.focus-mode { width:100%;margin:0;padding-top:42px; }
+        #appRoot.focus-mode .app-sidebar,#appRoot.focus-mode .app-header,#appRoot.focus-mode .dashboard-page,#appRoot.focus-mode .settings-page,#appRoot.focus-mode .project-workspace-bar,#appRoot.focus-mode .workspace-tabs,#appRoot.focus-mode #flowchartWorkspace,#appRoot.focus-mode .app-footer { display:none!important; }
+        #appRoot.focus-mode #editorWorkspace { display:block!important; }
+        #appRoot.focus-mode .workspace { height:calc(100vh - 54px);min-height:0;grid-template-columns:minmax(0,1fr) minmax(300px,.75fr); }
+        #appRoot.focus-mode .workspace .editor-panel,#appRoot.focus-mode .workspace .output-panel { height:calc(100vh - 54px); }
+        #appRoot.focus-mode .workspace.output-hidden { grid-template-columns:minmax(0,1fr); }
+        body.focus-active .sidebar-toggle { display:none; }
+        #navProfile,#profilePage,#profileGate,.sidebar-profile { display:none!important; }
+        #pseudocode { white-space:pre;tab-size:4;-moz-tab-size:4; }
+        @media(max-width:760px){.sidebar-collapsed .app{width:100%;margin-left:0}.workspace.layout-stacked .editor-panel,.workspace.layout-stacked .output-panel{height:420px}}
         .app-sidebar { position: fixed; z-index: 120; inset: 0 auto 0 0; width: 206px; padding: 18px 14px; display:flex; flex-direction:column; gap:18px; background:#0b1220; border-right:1px solid #253247; box-sizing:border-box; }
         .sidebar-brand { display:flex; align-items:center; gap:10px; padding:3px 5px 18px; border-bottom:1px solid #253247; color:#f8fafc; font-weight:800; line-height:1.15; }
         .sidebar-brand img { width:38px;height:38px;object-fit:contain; }
@@ -1114,6 +1135,7 @@
         .settings-row select,.settings-row input[type=number],.settings-row input[type=color] { min-width:92px;max-width:145px;padding:7px;border:1px solid #40506a;border-radius:7px;background:#0b1220;color:#e2e8f0; }
         .settings-row input[type=checkbox] { width:18px;height:18px;accent-color:var(--accent-color,#6366f1); }
         .settings-about { color:#aebbd0;line-height:1.65; }
+        #projectsFolderPath { overflow-wrap:anywhere; }
         [hidden] { display:none !important; }
         .profile-page-heading { display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap; }
         .profile-page-heading p,.profile-edit-hint,.profile-recovery-question { color:#94a3b8;font-size:13px; }
@@ -1312,6 +1334,7 @@
 
 
 <div class="app home-mode" id="appRoot">
+<button class="sidebar-toggle" id="sidebarToggle" type="button" aria-label="Open sidebar" title="Open sidebar" aria-expanded="false"><span></span><span></span><span></span></button>
 <aside class="app-sidebar" id="appSidebar">
   <div class="sidebar-brand"><img src="logo.png" alt=""><span>Di PseudoFlow<br>Logics</span></div>
   <nav class="sidebar-nav" aria-label="Main navigation"><button id="navHome" class="active">🏠 Home</button><button id="navProjects">📁 Projects</button><button id="navSettings">⚙ Settings</button><button id="navProfile">👤 Profile</button><button type="button" id="headerHelpButton" aria-label="Help" title="Help">❔ Help</button></nav>
@@ -1361,7 +1384,6 @@
         </article>
         <article class="settings-card"><h3>📝 Pseudocode Editor</h3>
           <label class="settings-row">Show line numbers<input type="checkbox" data-setting="showLineNumbers"></label>
-          <label class="settings-row">Auto-indent<input type="checkbox" data-setting="autoIndent"></label>
           <label class="settings-row">Syntax highlighting<input type="checkbox" data-setting="syntaxHighlighting"></label>
           <label class="settings-row">Font size<input type="number" min="10" max="28" data-setting="editorFontSize"></label>
           <label class="settings-row">Tab / indent size<select data-setting="indentSize"><option value="2">2 spaces</option><option value="4">4 spaces</option><option value="8">8 spaces</option></select></label>
@@ -1383,6 +1405,8 @@
           <label class="settings-row">Output write-out speed<select data-setting="outputWriteSpeed"><option value="0">Fast (no extra delay)</option><option value="100">Normal</option><option value="250">Slow</option><option value="500">Very slow</option></select></label>
         </article>
         <article class="settings-card"><h3>💾 Projects</h3>
+          <div class="settings-row"><span>Project storage folder</span><button type="button" class="project-action" id="chooseProjectsFolder">Choose folder</button></div>
+          <div class="settings-about" id="projectsFolderPath" aria-live="polite">Projects are stored on this computer.</div>
           <label class="settings-row">Auto-save<input type="checkbox" data-setting="autoSave"></label>
           <label class="settings-row">Auto-save interval (minutes)<input type="number" min="1" max="60" data-setting="autoSaveInterval"></label>
           <label class="settings-row">Confirm before deleting<input type="checkbox" data-setting="confirmDelete"></label>
@@ -1576,6 +1600,15 @@
 
                     </div>
 
+                    <div class="editor-actions-top">
+                      <button type="button" id="editorUndoButton" title="Undo (Ctrl+Z)">↶ Undo</button>
+                      <button type="button" id="editorRedoButton" title="Redo (Ctrl+Y)">↷ Redo</button>
+                      <label for="workspaceLayoutSelect" class="visually-hidden">Pseudocode and output layout</label>
+                      <select id="workspaceLayoutSelect" title="Panel layout"><option value="side-by-side">Side by side</option><option value="stacked">Stacked</option></select>
+                      <button type="button" id="toggleOutputButton" aria-expanded="true">Hide Output</button>
+                      <button type="button" id="focusWorkspaceButton" title="Show only pseudocode and output">⛶ Focus</button>
+                    </div>
+
                 </div>
 
                 <div class="editor-wrapper">
@@ -1667,7 +1700,7 @@
                     </span>
 
                     <span>
-                        <kbd>Enter</kbd> Auto-indent
+                        <kbd>Enter</kbd> New line · <kbd>Ctrl</kbd> + <kbd>Z</kbd> Undo · <kbd>Ctrl</kbd> + <kbd>Y</kbd> Redo
                     </span>
 
                 </div>
@@ -2169,7 +2202,7 @@
 ========================================================= */
 
 const DEFAULT_DPF_PREFERENCES = {
-    theme:"dark",accentColor:"#6366f1",editorFontSize:14,uiScale:"default",showLineNumbers:true,autoIndent:true,syntaxHighlighting:true,indentSize:"4",normalizeQuotes:true,
+    theme:"dark",accentColor:"#6366f1",editorFontSize:14,uiScale:"default",showLineNumbers:true,autoIndent:false,syntaxHighlighting:true,indentSize:"4",normalizeQuotes:true,
     showGrid:true,snapToGrid:true,defaultZoom:"1",defaultShapeSize:"default",arrowStyle:"standard",showConnectionPoints:true,stepByStepMode:false,showExecutionMessages:true,clearOutputBeforeRun:true,traceExecution:true,outputWriteSpeed:"0",
     autoSave:false,autoSaveInterval:5,confirmDelete:true,autoCheckUpdates:false,showHomeOnStartup:true,rememberLastWorkspace:true,openLastProject:false,showHomeLogo:true
 };
@@ -2865,7 +2898,7 @@ async function showProjectLibrary() {
 
 
     const result =
-        await window.diPseudoFlow.listProjects(currentProfile?.id);
+        await window.diPseudoFlow.listProjects();
 
 
     if (
@@ -6985,6 +7018,7 @@ function activateProfile(profile) {
     document.getElementById("dashboardGreeting").textContent=greetingText()+", "+(profile.firstName || "Guest");
     profileGate.hidden=true; document.getElementById("welcomeScreen").style.display="none";
     try { window.dpfPreferences={...DEFAULT_DPF_PREFERENCES,...JSON.parse(localStorage.getItem(profileSettingsKey())||"{}")} } catch (_) { window.dpfPreferences={...DEFAULT_DPF_PREFERENCES}; }
+    window.dpfPreferences.autoIndent=false;
     applyPreferences(); initializeHome();
 }
 function activateGuest() {
@@ -7096,7 +7130,7 @@ function relativeProjectTime(value) { if(!value)return "Not saved yet";const del
 async function refreshDashboardRecentProjects() {
     const host=document.getElementById("dashboardRecentProjects");if(!host||!currentProfile)return;
     host.replaceChildren();
-    try { const result=await window.diPseudoFlow.listProjects(currentProfile.id);const projects=result?.projects||[];if(!projects.length){host.innerHTML='<div class="dashboard-empty">No projects yet. Start a new project or open one you have saved.</div>';return;}
+    try { const result=await window.diPseudoFlow.listProjects();const projects=result?.projects||[];if(!projects.length){host.innerHTML='<div class="dashboard-empty">No projects yet. Start a new project or open one you have saved.</div>';return;}
         projects.slice(0,4).forEach(project=>{const card=document.createElement("article");card.className="dashboard-project-card";const title=document.createElement("h3");title.textContent=project.title||"Untitled project";const stamp=document.createElement("p");stamp.textContent="Work ID: "+(project.workStamp||"Pending");const pseudo=document.createElement("p");pseudo.textContent="Pseudocode  "+(project.hasPseudocode?"✓":"—");const flow=document.createElement("p");flow.textContent="Flowchart  "+(project.hasFlowchart?"✓":"—");const time=document.createElement("p");time.textContent=relativeProjectTime(project.modified||project.created);const open=document.createElement("button");open.className="open-recent";open.type="button";open.textContent="OPEN";open.addEventListener("click",()=>loadProject(project.id));card.append(title,stamp,pseudo,flow,time,open);host.appendChild(card);});
     } catch (_) {host.innerHTML='<div class="dashboard-empty">Projects could not be loaded.</div>';}
 }
@@ -7147,6 +7181,31 @@ function resetAutoSaveTimer(){if(autoSaveTimer)clearInterval(autoSaveTimer);cons
 const originalApplyPreferences=applyPreferences;
 applyPreferences=function(){originalApplyPreferences();resetAutoSaveTimer();};
 initializeProfileGate();
+
+// Workspace controls: keep the editor's native undo stack and clipboard text intact.
+const editorForHistory = document.getElementById("pseudocode");
+document.getElementById("editorUndoButton").addEventListener("click",()=>{editorForHistory.focus();document.execCommand("undo");updateEditorVisuals();});
+document.getElementById("editorRedoButton").addEventListener("click",()=>{editorForHistory.focus();document.execCommand("redo");updateEditorVisuals();});
+const editorWorkspaceGrid=document.querySelector("#editorWorkspace .workspace");
+const outputPanelElement=document.querySelector(".output-panel");
+const layoutSelect=document.getElementById("workspaceLayoutSelect");
+layoutSelect.value=localStorage.getItem("dpf-workspace-layout")||"side-by-side";
+editorWorkspaceGrid.classList.toggle("layout-stacked",layoutSelect.value==="stacked");
+layoutSelect.addEventListener("change",()=>{editorWorkspaceGrid.classList.toggle("layout-stacked",layoutSelect.value==="stacked");localStorage.setItem("dpf-workspace-layout",layoutSelect.value);});
+const outputToggle=document.getElementById("toggleOutputButton");
+function setOutputVisible(visible){outputPanelElement.hidden=!visible;editorWorkspaceGrid.classList.toggle("output-hidden",!visible);outputToggle.textContent=visible?"Hide Output":"Show Output";outputToggle.setAttribute("aria-expanded",String(visible));window.dpfPreferences.showExecutionMessages=visible;localStorage.setItem(profileSettingsKey(),JSON.stringify(window.dpfPreferences));}
+setOutputVisible(localStorage.getItem("dpf-output-visible")==="false"?false:true);
+outputToggle.addEventListener("click",()=>{const visible=outputPanelElement.hidden;localStorage.setItem("dpf-output-visible",String(visible));setOutputVisible(visible);});
+const focusButton=document.getElementById("focusWorkspaceButton");let focusExitButton=null;
+function setFocusMode(enabled){document.getElementById("appRoot").classList.toggle("focus-mode",enabled);document.body.classList.toggle("focus-active",enabled);window.diPseudoFlow.setFullScreen(enabled);if(enabled){if(!focusExitButton){focusExitButton=document.createElement("button");focusExitButton.className="focus-exit";focusExitButton.type="button";focusExitButton.textContent="Exit focus view";focusExitButton.addEventListener("click",()=>setFocusMode(false));document.body.appendChild(focusExitButton);}}else if(focusExitButton){focusExitButton.remove();focusExitButton=null;}}
+focusButton.addEventListener("click",()=>setFocusMode(true));
+window.addEventListener("keydown",event=>{if(event.key==="Escape"&&document.body.classList.contains("focus-active"))setFocusMode(false);});
+const sidebarToggle=document.getElementById("sidebarToggle");
+function setSidebarCollapsed(collapsed){document.body.classList.toggle("sidebar-collapsed",collapsed);sidebarToggle.setAttribute("aria-expanded",String(!collapsed));sidebarToggle.setAttribute("aria-label",collapsed?"Open sidebar":"Close sidebar");sidebarToggle.title=collapsed?"Open sidebar":"Close sidebar";localStorage.setItem("dpf-sidebar-collapsed",String(collapsed));}
+setSidebarCollapsed(localStorage.getItem("dpf-sidebar-collapsed")==="false"?false:true);
+sidebarToggle.addEventListener("click",()=>setSidebarCollapsed(!document.body.classList.contains("sidebar-collapsed")));
+document.getElementById("chooseProjectsFolder").addEventListener("click",async()=>{const result=await window.diPseudoFlow.chooseProjectsFolder();if(result?.success){document.getElementById("projectsFolderPath").textContent=result.directory;await refreshDashboardRecentProjects();}else if(!result?.canceled)alert(result?.error||"Could not select the project folder.");});
+window.diPseudoFlow.getProjectsFolder().then(result=>{if(result?.success)document.getElementById("projectsFolderPath").textContent=result.directory;}).catch(()=>{});
 
 /* =========================================================
    INITIAL PROJECT

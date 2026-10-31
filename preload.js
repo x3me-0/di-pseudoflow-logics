@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("diPseudoFlow", {
+    setFullScreen: (enabled) => ipcRenderer.invoke("window:set-fullscreen", Boolean(enabled)),
     // Application information
     getVersion: () => ipcRenderer.invoke("app:get-version"),
     checkForUpdates: () => ipcRenderer.invoke("app:check-for-updates"),
@@ -34,5 +35,7 @@ contextBridge.exposeInMainWorld("diPseudoFlow", {
 
     // Create/open a project library folder if needed
     openProjectsFolder: () =>
-        ipcRenderer.invoke("project:open-folder")
+        ipcRenderer.invoke("project:open-folder"),
+    chooseProjectsFolder: () => ipcRenderer.invoke("project:choose-folder"),
+    getProjectsFolder: () => ipcRenderer.invoke("project:get-folder")
 });

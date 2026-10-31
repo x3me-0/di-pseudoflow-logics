@@ -9,6 +9,7 @@ let executionFinished = false;
 let stepByStepMode = false;
 let stepNumber = 0;
 let pendingElseIfLines = new Set();
+let loopFrames = [];
 let executingLineNumber = null;
 let executionDelayTimer = null;
 
@@ -58,6 +59,7 @@ function clearProgram() {
     programLines = [];
     currentLine = 0;
     stepNumber = 0;
+    loopFrames = [];
 
     executionFinished = false;
     stepByStepMode = false;
@@ -170,7 +172,20 @@ const highlightKeywords = new Set([
     "end",
     "and",
     "or",
-    "not"
+    "not",
+    "case",
+    "of",
+    "otherwise",
+    "endcase",
+    "for",
+    "to",
+    "step",
+    "endfor",
+    "while",
+    "do",
+    "endwhile",
+    "repeat",
+    "until"
 ]);
 
 
@@ -2226,6 +2241,8 @@ function performSyntaxCheck() {
 
 
     let ifStack = [];
+    let caseStack = [];
+    let loopStack = [];
 
 
     for (
@@ -2280,6 +2297,48 @@ function performSyntaxCheck() {
 
         const lower =
             line.toLowerCase();
+
+        if (/^case\s+.+\s+of$/i.test(line)) {
+            caseStack.push({ line: i + 1, otherwiseSeen: false });
+            continue;
+        }
+        if (/^(otherwise|.+):$/i.test(line)) {
+            const activeCase = caseStack[caseStack.length - 1];
+            if (!activeCase) errors.push({ line: i + 1, message: "CASE arm does not have a matching CASE statement." });
+            else if (/^otherwise\s*:/i.test(line)) {
+                if (activeCase.otherwiseSeen) errors.push({ line: i + 1, message: "A CASE statement can only have one OTHERWISE arm." });
+                activeCase.otherwiseSeen = true;
+            } else if (activeCase.otherwiseSeen) errors.push({ line: i + 1, message: "CASE arms cannot appear after OTHERWISE." });
+            continue;
+        }
+        if (lower === "endcase") {
+            if (!caseStack.length) errors.push({ line: i + 1, message: "ENDCASE does not have a matching CASE statement." });
+            else caseStack.pop();
+            continue;
+        }
+
+        if (/^for\s+[A-Za-z_][A-Za-z0-9_]*\s*=\s*.+\s+to\s+.+(?:\s+step\s+.+)?$/i.test(line)) {
+            loopStack.push({ type: "for", line: i + 1 });
+            continue;
+        }
+        if (/^while\s+.+(?:\s+do)?$/i.test(line)) {
+            loopStack.push({ type: "while", line: i + 1 });
+            continue;
+        }
+        if (/^repeat$/i.test(line)) { loopStack.push({ type: "repeat", line: i + 1 }); continue; }
+        if (/^endfor$/i.test(line) || /^endwhile$/i.test(line)) {
+            const expected = /^endfor$/i.test(line) ? "for" : "while";
+            const active = loopStack[loopStack.length - 1];
+            if (!active || active.type !== expected) errors.push({ line: i + 1, message: `${line.toUpperCase()} does not match an open ${expected.toUpperCase()} loop.` });
+            else loopStack.pop();
+            continue;
+        }
+        if (/^until\s+.+$/i.test(line)) {
+            const active = loopStack[loopStack.length - 1];
+            if (!active || active.type !== "repeat") errors.push({ line: i + 1, message: "UNTIL does not have a matching REPEAT statement." });
+            else loopStack.pop();
+            continue;
+        }
 
 
         if (
@@ -2519,6 +2578,15 @@ function performSyntaxCheck() {
         });
     }
 
+    while (caseStack.length > 0) {
+        const openCase = caseStack.pop();
+        errors.push({ line: openCase.line, message: "CASE statement is missing ENDCASE." });
+    }
+    while (loopStack.length > 0) {
+        const openLoop = loopStack.pop();
+        errors.push({ line: openLoop.line, message: `${openLoop.type.toUpperCase()} loop is missing its closing statement.` });
+    }
+
 
     if (
         !startFound
@@ -2650,6 +2718,7 @@ function runProgram() {
     programLines = [];
     currentLine = 0;
     pendingElseIfLines = new Set();
+    loopFrames = [];
 
 
     stepByStepMode = false;
@@ -2714,6 +2783,7 @@ function runStepByStep() {
     programLines = [];
     currentLine = 0;
     pendingElseIfLines = new Set();
+    loopFrames = [];
 
 
     stepByStepMode = true;
@@ -2762,6 +2832,73 @@ function runStepByStep() {
 /* =========================================================
    SEQUENTIAL EXECUTION
 ========================================================= */
+
+function caseLineText(index) {
+    if (index < 0 || index >= programLines.length) return "";
+    return normalizeQuotes(removeComment(programLines[index])).trim();
+}
+
+function findMatchingEndCase(startIndex) {
+    let depth = 0;
+    for (let i = startIndex; i < programLines.length; i++) {
+        const text = caseLineText(i);
+        if (/^case\s+.+\s+of$/i.test(text)) depth++;
+        else if (/^endcase$/i.test(text) && --depth === 0) return i;
+    }
+    return -1;
+}
+
+function findMatchingLoopEnd(startIndex, type) {
+    const endPattern = type === "for" ? /^endfor$/i : type === "while" ? /^endwhile$/i : /^until\s+.+$/i;
+    const startPattern = type === "for" ? /^for\s+/i : type === "while" ? /^while\s+/i : /^repeat$/i;
+    let depth = 0;
+    for (let i = startIndex; i < programLines.length; i++) {
+        const text = caseLineText(i);
+        if (startPattern.test(text)) depth++;
+        else if (endPattern.test(text) && --depth === 0) return i;
+    }
+    return -1;
+}
+
+function findLoopFrame(type, startIndex) {
+    for (let i = loopFrames.length - 1; i >= 0; i--) {
+        if (loopFrames[i].type === type && (startIndex === undefined || loopFrames[i].startIndex === startIndex)) return loopFrames[i];
+    }
+    return null;
+}
+
+function findEnclosingCaseStart(targetIndex) {
+    const openCases = [];
+    for (let i = 0; i <= targetIndex; i++) {
+        const text = caseLineText(i);
+        if (/^case\s+.+\s+of$/i.test(text)) openCases.push(i);
+        else if (/^endcase$/i.test(text)) openCases.pop();
+    }
+    return openCases.length ? openCases[openCases.length - 1] : -1;
+}
+
+function selectCaseArm(caseIndex, selectorValue) {
+    const endIndex = findMatchingEndCase(caseIndex);
+    if (endIndex < 0) throw new Error("CASE statement has no matching ENDCASE.");
+    let depth = 0;
+    let otherwiseIndex = -1;
+    for (let i = caseIndex + 1; i < endIndex; i++) {
+        const text = caseLineText(i);
+        if (/^case\s+.+\s+of$/i.test(text)) { depth++; continue; }
+        if (/^endcase$/i.test(text)) { depth--; continue; }
+        if (depth !== 0) continue;
+        const arm = text.match(/^(otherwise|.+):$/i);
+        if (!arm) continue;
+        if (/^otherwise$/i.test(arm[1].trim())) { otherwiseIndex = i; continue; }
+        const values = arm[1].split(",").map(value => value.trim());
+        const matches = values.some(value => {
+            try { return evaluateExpression(value) == selectorValue; }
+            catch (_) { return value.replace(/^['"]|['"]$/g, "") == selectorValue; }
+        });
+        if (matches) return { armIndex: i, endIndex };
+    }
+    return { armIndex: otherwiseIndex, endIndex };
+}
 
 function executeNextLine() {
 
@@ -2872,6 +3009,27 @@ function executeNextLine() {
 
                 currentLine++;
 
+                continue;
+            }
+
+            const caseHeader = cleanLine.match(/^case\s+(.+)\s+of$/i);
+            if (caseHeader) {
+                const selectorValue = evaluateExpression(caseHeader[1]);
+                const selected = selectCaseArm(currentLine, selectorValue);
+                currentLine = selected.armIndex < 0 ? selected.endIndex + 1 : selected.armIndex + 1;
+                continue;
+            }
+
+            if (/^otherwise\s*:|^.+:$/i.test(cleanLine)) {
+                const caseStart = findEnclosingCaseStart(currentLine);
+                const endCase = caseStart < 0 ? -1 : findMatchingEndCase(caseStart);
+                if (endCase < 0) throw new Error("CASE arm has no matching ENDCASE.");
+                currentLine = endCase + 1;
+                continue;
+            }
+
+            if (lower === "endcase") {
+                currentLine++;
                 continue;
             }
 
@@ -3024,6 +3182,83 @@ function executeNextLine() {
                 continue;
             }
 
+
+            const forHeader = cleanLine.match(/^for\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+?)\s+to\s+(.+?)(?:\s+step\s+(.+))?$/i);
+            if (forHeader) {
+                const [, name, firstText, lastText, stepText] = forHeader;
+                const variable = variables[name];
+                if (!variable) throw new Error(`Variable '${name}' has not been declared.`);
+                if (variable.type === "constant") throw new Error(`Constant '${name}' cannot be used as a loop counter.`);
+                if (!["integer", "real", "float"].includes(variable.type)) throw new Error("A FOR loop counter must be a numeric variable.");
+                const first = Number(evaluateExpression(firstText));
+                const last = Number(evaluateExpression(lastText));
+                const step = stepText ? Number(evaluateExpression(stepText)) : 1;
+                if (![first, last, step].every(Number.isFinite) || step === 0) throw new Error("FOR loop start, end, and step must be valid numbers, and step cannot be zero.");
+                validateValueForType(first, variable.type);
+                const endIndex = findMatchingLoopEnd(currentLine, "for");
+                if (endIndex < 0) throw new Error("FOR loop has no matching ENDFOR.");
+                variable.value = first;
+                const frame = { type: "for", startIndex: currentLine, endIndex, variable: name, last, step };
+                loopFrames.push(frame);
+                if (step > 0 ? first <= last : first >= last) currentLine++;
+                else { loopFrames.splice(loopFrames.indexOf(frame), 1); currentLine = endIndex + 1; }
+                continue;
+            }
+
+            const whileHeader = cleanLine.match(/^while\s+(.+?)(?:\s+do)?$/i);
+            if (whileHeader) {
+                let frame = findLoopFrame("while", currentLine);
+                const endIndex = frame?.endIndex ?? findMatchingLoopEnd(currentLine, "while");
+                if (endIndex < 0) throw new Error("WHILE loop has no matching ENDWHILE.");
+                if (!evaluateCondition(whileHeader[1])) {
+                    if (frame) loopFrames.splice(loopFrames.indexOf(frame), 1);
+                    currentLine = endIndex + 1;
+                } else {
+                    if (!frame) { frame = { type: "while", startIndex: currentLine, endIndex }; loopFrames.push(frame); }
+                    currentLine++;
+                }
+                continue;
+            }
+
+            if (/^repeat$/i.test(cleanLine)) {
+                if (!findLoopFrame("repeat", currentLine)) {
+                    const endIndex = findMatchingLoopEnd(currentLine, "repeat");
+                    if (endIndex < 0) throw new Error("REPEAT loop has no matching UNTIL condition.");
+                    loopFrames.push({ type: "repeat", startIndex: currentLine, endIndex });
+                }
+                currentLine++;
+                continue;
+            }
+
+            const untilHeader = cleanLine.match(/^until\s+(.+)$/i);
+            if (untilHeader) {
+                const frame = findLoopFrame("repeat");
+                if (!frame) throw new Error("UNTIL does not have a matching REPEAT statement.");
+                if (evaluateCondition(untilHeader[1])) {
+                    loopFrames.splice(loopFrames.indexOf(frame), 1);
+                    currentLine++;
+                } else currentLine = frame.startIndex + 1;
+                continue;
+            }
+
+            if (/^endfor$/i.test(cleanLine)) {
+                const frame = findLoopFrame("for");
+                if (!frame) throw new Error("ENDFOR does not have a matching FOR loop.");
+                const variable = variables[frame.variable];
+                variable.value = Number(variable.value) + frame.step;
+                validateValueForType(variable.value, variable.type);
+                const active = frame.step > 0 ? variable.value <= frame.last : variable.value >= frame.last;
+                currentLine = active ? frame.startIndex + 1 : frame.endIndex + 1;
+                if (!active) loopFrames.splice(loopFrames.indexOf(frame), 1);
+                continue;
+            }
+
+            if (/^endwhile$/i.test(cleanLine)) {
+                const frame = findLoopFrame("while");
+                if (!frame) throw new Error("ENDWHILE does not have a matching WHILE loop.");
+                currentLine = frame.startIndex;
+                continue;
+            }
 
             if (lower.startsWith("print ") || lower.startsWith("output ")) {
                 const printText = cleanLine.substring(lower.startsWith("output ") ? 6 : 5).trim();
@@ -3700,6 +3935,13 @@ function isDeclarationLine(line) {
            ...
        ENDIF
 
+       CASE selector OF
+           value:
+               ...
+           OTHERWISE:
+               ...
+       ENDCASE
+
    STOP
 */
 
@@ -3720,6 +3962,8 @@ function formatPseudocode() {
     let level = 0;
 
     let inDeclare = false;
+    const caseFrames = [];
+    const loopIndentFrames = [];
 
 
     for (
@@ -3752,6 +3996,75 @@ function formatPseudocode() {
             normalizeQuotes(
                 clean
             ).toLowerCase();
+
+        const caseHeader = clean.match(/^case\s+(.+)\s+of$/i);
+        if (caseHeader) {
+            if (inDeclare) { inDeclare = false; level = Math.max(1, level - 1); }
+            formatted.push(INDENT.repeat(level) + "case " + caseHeader[1].trim() + " of");
+            caseFrames.push({ base: level });
+            level++;
+            continue;
+        }
+
+        if (/^endcase$/i.test(clean)) {
+            const frame = caseFrames.pop();
+            level = frame ? frame.base : Math.max(0, level - 1);
+            formatted.push(INDENT.repeat(level) + "endcase");
+            continue;
+        }
+
+        const caseArm = clean.match(/^(otherwise|.+):$/i);
+        if (caseArm && caseFrames.length) {
+            const frame = caseFrames[caseFrames.length - 1];
+            level = frame.base + 1;
+            formatted.push(INDENT.repeat(level) + (/^otherwise$/i.test(caseArm[1].trim()) ? "otherwise:" : caseArm[1].trim() + ":"));
+            level = frame.base + 2;
+            continue;
+        }
+
+        const formattedFor = clean.match(/^for\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+?)\s+to\s+(.+?)(?:\s+step\s+(.+))?$/i);
+        if (formattedFor) {
+            if (inDeclare) { inDeclare = false; level = Math.max(1, level - 1); }
+            const [, name, first, last, step] = formattedFor;
+            formatted.push(INDENT.repeat(level) + `for ${name} = ${first.trim()} to ${last.trim()}${step ? " step " + step.trim() : ""}`);
+            loopIndentFrames.push({ type: "for", base: level });
+            level++;
+            continue;
+        }
+        const formattedWhile = clean.match(/^while\s+(.+?)(?:\s+do)?$/i);
+        if (formattedWhile) {
+            if (inDeclare) { inDeclare = false; level = Math.max(1, level - 1); }
+            formatted.push(INDENT.repeat(level) + "while " + formattedWhile[1].replace(/\s+do$/i, "").trim() + " do");
+            loopIndentFrames.push({ type: "while", base: level });
+            level++;
+            continue;
+        }
+        if (/^repeat$/i.test(clean)) {
+            if (inDeclare) { inDeclare = false; level = Math.max(1, level - 1); }
+            loopIndentFrames.push({ type: "repeat", base: level });
+            formatted.push(INDENT.repeat(level) + "repeat");
+            level++;
+            continue;
+        }
+        if (/^endfor$/i.test(clean) || /^endwhile$/i.test(clean)) {
+            const expected = /^endfor$/i.test(clean) ? "for" : "while";
+            let frameIndex = loopIndentFrames.length - 1;
+            while (frameIndex >= 0 && loopIndentFrames[frameIndex].type !== expected) frameIndex--;
+            const frame = frameIndex >= 0 ? loopIndentFrames.splice(frameIndex, 1)[0] : null;
+            level = frame ? frame.base : Math.max(0, level - 1);
+            const token = expected === "for" ? "endfor" : "endwhile";
+            formatted.push(INDENT.repeat(level) + token);
+            continue;
+        }
+        const formattedUntil = clean.match(/^until\s+(.+)$/i);
+        if (formattedUntil) {
+            let frameIndex = loopIndentFrames.length - 1;
+            while (frameIndex >= 0 && loopIndentFrames[frameIndex].type !== "repeat") frameIndex--;
+            const frame = frameIndex >= 0 ? loopIndentFrames.splice(frameIndex, 1)[0] : null;
+            level = frame ? frame.base : Math.max(0, level - 1);
+            formatted.push(INDENT.repeat(level) + "until " + formattedUntil[1].trim());
+            continue;
+        }
 
 
         /*
@@ -4022,6 +4335,10 @@ function autoIndentAfterEnter(
 
     const lower =
         trimmed.toLowerCase();
+
+    if (/^case\s+.+\s+of$/i.test(trimmed) || /^(otherwise|.+):$/i.test(trimmed)) {
+        indent += INDENT;
+    }
 
 
     /*
@@ -4544,9 +4861,7 @@ editor.addEventListener(
                 );
 
 
-            const indent = window.dpfPreferences?.autoIndent === false
-                ? ""
-                : autoIndentAfterEnter(previousLine);
+            const indent = "";
 
 
             editor.value =
@@ -4596,7 +4911,7 @@ editor.addEventListener(
         setTimeout(
             function () {
 
-                adjustCurrentLineIndent();
+                if (window.dpfPreferences?.autoIndent !== false) adjustCurrentLineIndent();
 
             },
             0

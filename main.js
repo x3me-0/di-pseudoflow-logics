@@ -13,6 +13,22 @@ const crypto = require("crypto");
 const { autoUpdater } = require("electron-updater");
 
 let mainWindow;
+let selectedProjectsDirectory = null;
+
+function getProjectsDirectorySettingPath() {
+    return path.join(app.getPath("userData"), "projects-location.json");
+}
+
+function loadProjectsDirectorySetting() {
+    if (selectedProjectsDirectory) return selectedProjectsDirectory;
+    try {
+        const setting = JSON.parse(fs.readFileSync(getProjectsDirectorySettingPath(), "utf8"));
+        if (setting && typeof setting.directory === "string" && fs.existsSync(setting.directory)) {
+            selectedProjectsDirectory = setting.directory;
+        }
+    } catch (_) {}
+    return selectedProjectsDirectory;
+}
 
 function releaseNotesText(notes) {
     if (!notes) return "";
@@ -31,13 +47,19 @@ function sendUpdateStatus(payload) {
     }
 }
 
+ipcMain.handle("window:set-fullscreen", (_event, enabled) => {
+    if (!mainWindow || mainWindow.isDestroyed()) return false;
+    mainWindow.setFullScreen(Boolean(enabled));
+    return true;
+});
+
 
 /* =========================================================
    PROJECT STORAGE
 ========================================================= */
 
 function getProjectsDirectory() {
-    const projectsDirectory = path.join(
+    const projectsDirectory = loadProjectsDirectorySetting() || path.join(
         app.getPath("userData"),
         "projects"
     );
@@ -713,6 +735,26 @@ ipcMain.handle(
         }
     }
 );
+
+ipcMain.handle("project:get-folder", async () => ({ success: true, directory: getProjectsDirectory() }));
+
+ipcMain.handle("project:choose-folder", async () => {
+    const result = await dialog.showOpenDialog(mainWindow, { title: "Choose where to store projects", properties: ["openDirectory", "createDirectory"] });
+    if (result.canceled || !result.filePaths?.[0]) return { success: false, canceled: true };
+    const previousDirectory = getProjectsDirectory();
+    selectedProjectsDirectory = result.filePaths[0];
+    fs.mkdirSync(selectedProjectsDirectory, { recursive: true });
+    if (path.resolve(previousDirectory) !== path.resolve(selectedProjectsDirectory)) {
+        for (const name of fs.readdirSync(previousDirectory)) {
+            if (!name.toLowerCase().endsWith(".json")) continue;
+            const source = path.join(previousDirectory, name);
+            const destination = path.join(selectedProjectsDirectory, name);
+            if (!fs.existsSync(destination) && fs.statSync(source).isFile()) fs.copyFileSync(source, destination);
+        }
+    }
+    fs.writeFileSync(getProjectsDirectorySettingPath(), JSON.stringify({ directory: selectedProjectsDirectory }, null, 2), "utf8");
+    return { success: true, directory: selectedProjectsDirectory };
+});
 
 
 /* =========================================================
