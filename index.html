@@ -1037,7 +1037,8 @@
     
         /* Home dashboard, local profiles, and preferences */
         .app { width: calc(100% - 226px); margin-left: 226px; position: relative; }
-        .sidebar-toggle { position:fixed;z-index:300;top:12px;left:14px;width:42px;height:42px;display:grid;place-content:center;gap:4px;border:1px solid #334155;border-radius:9px;background:#111b2b;color:#e2e8f0;cursor:pointer; }
+        .sidebar-toggle { position:fixed;z-index:300;top:12px;left:14px;width:42px;height:42px;display:grid;place-content:center;gap:4px;border:1px solid #334155;border-radius:9px;background:#111b2b;color:#e2e8f0;cursor:pointer;transition:left .18s ease; }
+        body:not(.sidebar-collapsed) .sidebar-toggle { left:154px; }
         .sidebar-toggle span { display:block;width:19px;height:2px;border-radius:2px;background:currentColor; }
         .sidebar-collapsed .app-sidebar { transform:translateX(-105%); }
         .app-sidebar { transition:transform .18s ease; }
@@ -1054,6 +1055,9 @@
         #appRoot.focus-mode .workspace { height:calc(100vh - 54px);min-height:0;grid-template-columns:minmax(0,1fr) minmax(300px,.75fr); }
         #appRoot.focus-mode .workspace .editor-panel,#appRoot.focus-mode .workspace .output-panel { height:calc(100vh - 54px); }
         #appRoot.focus-mode .workspace.output-hidden { grid-template-columns:minmax(0,1fr); }
+        #appRoot.focus-mode .workspace.layout-stacked { grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(280px,1fr) minmax(240px,.85fr); }
+        #appRoot.focus-mode .workspace.layout-stacked .editor-panel,#appRoot.focus-mode .workspace.layout-stacked .output-panel { height:auto;min-height:0; }
+        #appRoot.focus-mode .workspace.output-hidden { grid-template-rows:minmax(0,1fr); }
         body.focus-active .sidebar-toggle { display:none; }
         #navProfile,#profilePage,#profileGate,.sidebar-profile { display:none!important; }
         #pseudocode { white-space:pre;tab-size:4;-moz-tab-size:4; }
@@ -1631,6 +1635,7 @@
 
                         <textarea
                             id="pseudocode"
+                            wrap="off"
                             spellcheck="false"
                             autocomplete="off"
                             autocorrect="off"
@@ -1867,6 +1872,7 @@
                     >
                         +
                     </button>
+
 
                     <button
                         type="button"
@@ -6463,6 +6469,7 @@ function updateFlowchartTransform() {
 
     flowchartZoomText.textContent =
         `Zoom: ${Math.round(flowZoom * 100)}%`;
+
 
 
     document

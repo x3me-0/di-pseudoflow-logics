@@ -10,6 +10,7 @@ let stepByStepMode = false;
 let stepNumber = 0;
 let pendingElseIfLines = new Set();
 let loopFrames = [];
+let pendingInlineCaseStatement = null;
 let executingLineNumber = null;
 let executionDelayTimer = null;
 
@@ -60,6 +61,7 @@ function clearProgram() {
     currentLine = 0;
     stepNumber = 0;
     loopFrames = [];
+    pendingInlineCaseStatement = null;
 
     executionFinished = false;
     stepByStepMode = false;
@@ -2298,14 +2300,15 @@ function performSyntaxCheck() {
         const lower =
             line.toLowerCase();
 
-        if (/^case\s+.+\s+of$/i.test(line)) {
+        if (parseCaseHeader(line)) {
             caseStack.push({ line: i + 1, otherwiseSeen: false });
             continue;
         }
-        if (/^(otherwise|.+):$/i.test(line)) {
+        if (parseCaseArm(line)) {
             const activeCase = caseStack[caseStack.length - 1];
+            const arm = parseCaseArm(line);
             if (!activeCase) errors.push({ line: i + 1, message: "CASE arm does not have a matching CASE statement." });
-            else if (/^otherwise\s*:/i.test(line)) {
+            else if (/^otherwise$/i.test(arm.label)) {
                 if (activeCase.otherwiseSeen) errors.push({ line: i + 1, message: "A CASE statement can only have one OTHERWISE arm." });
                 activeCase.otherwiseSeen = true;
             } else if (activeCase.otherwiseSeen) errors.push({ line: i + 1, message: "CASE arms cannot appear after OTHERWISE." });
@@ -2313,11 +2316,14 @@ function performSyntaxCheck() {
         }
         if (lower === "endcase") {
             if (!caseStack.length) errors.push({ line: i + 1, message: "ENDCASE does not have a matching CASE statement." });
-            else caseStack.pop();
+            else {
+                const closedCase = caseStack.pop();
+                if (!closedCase.otherwiseSeen) errors.push({ line: closedCase.line, message: "Add an OTHERWISE arm so unmatched values are handled." });
+            }
             continue;
         }
 
-        if (/^for\s+[A-Za-z_][A-Za-z0-9_]*\s*=\s*.+\s+to\s+.+(?:\s+step\s+.+)?$/i.test(line)) {
+        if (/^for\s+[A-Za-z_][A-Za-z0-9_]*\s*(?:=|←)\s*.+\s+to\s+.+(?:\s+step\s+.+)?$/i.test(line)) {
             loopStack.push({ type: "for", line: i + 1 });
             continue;
         }
@@ -2341,9 +2347,7 @@ function performSyntaxCheck() {
         }
 
 
-        if (
-            lower === "start"
-        ) {
+        if (lower === "start" || /^begin(?:\s+.+)?$/i.test(line)) {
 
             if (
                 startFound
@@ -2363,9 +2367,7 @@ function performSyntaxCheck() {
         }
 
 
-        if (
-            lower === "stop"
-        ) {
+        if (lower === "stop" || lower === "end") {
 
             if (
                 stopFound
@@ -2434,12 +2436,10 @@ function performSyntaxCheck() {
         }
 
 
-        if (
-            lower.startsWith("read ")
-        ) {
+        if (/^(read|input)\s+/i.test(line)) {
 
             const variableName =
-                line.substring(5)
+                line.substring(line.search(/\s/) + 1)
                     .trim();
 
 
@@ -2530,13 +2530,11 @@ function performSyntaxCheck() {
         }
 
 
-        if (
-            line.includes("=")
-        ) {
+        if (line.includes("=") || line.includes("←")) {
 
             const assignmentMatch =
                 line.match(
-                    /^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+)$/
+                    /^([A-Za-z_][A-Za-z0-9_]*)\s*(?:=|←)\s*(.+)$/
                 );
 
 
@@ -2719,6 +2717,7 @@ function runProgram() {
     currentLine = 0;
     pendingElseIfLines = new Set();
     loopFrames = [];
+    pendingInlineCaseStatement = null;
 
 
     stepByStepMode = false;
@@ -2784,6 +2783,7 @@ function runStepByStep() {
     currentLine = 0;
     pendingElseIfLines = new Set();
     loopFrames = [];
+    pendingInlineCaseStatement = null;
 
 
     stepByStepMode = true;
@@ -2838,11 +2838,38 @@ function caseLineText(index) {
     return normalizeQuotes(removeComment(programLines[index])).trim();
 }
 
+function parseCaseHeader(text) {
+    const match = text.match(/^case\s+(?:of\s+(.+)|(.+)\s+of)$/i);
+    return match ? (match[1] || match[2]).trim() : null;
+}
+
+function parseCaseArm(text) {
+    let quote = "";
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if ((ch === '"' || ch === "'") && (!quote || quote === ch)) quote = quote ? "" : ch;
+        else if (ch === ":" && !quote) return { label: text.slice(0, i).trim(), statement: text.slice(i + 1).trim() };
+    }
+    return null;
+}
+
+function splitCaseValues(text) {
+    const values = [];
+    let quote = "", start = 0;
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if ((ch === '"' || ch === "'") && (!quote || quote === ch)) quote = quote ? "" : ch;
+        else if (ch === "," && !quote) { values.push(text.slice(start, i).trim()); start = i + 1; }
+    }
+    values.push(text.slice(start).trim());
+    return values;
+}
+
 function findMatchingEndCase(startIndex) {
     let depth = 0;
     for (let i = startIndex; i < programLines.length; i++) {
         const text = caseLineText(i);
-        if (/^case\s+.+\s+of$/i.test(text)) depth++;
+        if (parseCaseHeader(text)) depth++;
         else if (/^endcase$/i.test(text) && --depth === 0) return i;
     }
     return -1;
@@ -2871,7 +2898,7 @@ function findEnclosingCaseStart(targetIndex) {
     const openCases = [];
     for (let i = 0; i <= targetIndex; i++) {
         const text = caseLineText(i);
-        if (/^case\s+.+\s+of$/i.test(text)) openCases.push(i);
+        if (parseCaseHeader(text)) openCases.push(i);
         else if (/^endcase$/i.test(text)) openCases.pop();
     }
     return openCases.length ? openCases[openCases.length - 1] : -1;
@@ -2884,20 +2911,20 @@ function selectCaseArm(caseIndex, selectorValue) {
     let otherwiseIndex = -1;
     for (let i = caseIndex + 1; i < endIndex; i++) {
         const text = caseLineText(i);
-        if (/^case\s+.+\s+of$/i.test(text)) { depth++; continue; }
+        if (parseCaseHeader(text)) { depth++; continue; }
         if (/^endcase$/i.test(text)) { depth--; continue; }
         if (depth !== 0) continue;
-        const arm = text.match(/^(otherwise|.+):$/i);
+        const arm = parseCaseArm(text);
         if (!arm) continue;
-        if (/^otherwise$/i.test(arm[1].trim())) { otherwiseIndex = i; continue; }
-        const values = arm[1].split(",").map(value => value.trim());
+        if (/^otherwise$/i.test(arm.label)) { otherwiseIndex = i; continue; }
+        const values = splitCaseValues(arm.label);
         const matches = values.some(value => {
             try { return evaluateExpression(value) == selectorValue; }
             catch (_) { return value.replace(/^['"]|['"]$/g, "") == selectorValue; }
         });
-        if (matches) return { armIndex: i, endIndex };
+        if (matches) return { armIndex: i, endIndex, statement: arm.statement };
     }
-    return { armIndex: otherwiseIndex, endIndex };
+    return { armIndex: otherwiseIndex, endIndex, statement: otherwiseIndex < 0 ? "" : parseCaseArm(caseLineText(otherwiseIndex))?.statement || "" };
 }
 
 function executeNextLine() {
@@ -2920,14 +2947,16 @@ function executeNextLine() {
             currentLine + 1;
 
 
+        const hasPendingInline = pendingInlineCaseStatement !== null;
         const originalLine =
             programLines[
                 currentLine
             ];
 
 
-        const cleanLine =
-            normalizeQuotes(
+        const cleanLine = hasPendingInline
+            ? pendingInlineCaseStatement
+            : normalizeQuotes(
                 removeComment(
                     originalLine
                 )
@@ -2951,6 +2980,7 @@ function executeNextLine() {
             }, delay || 16);
             return;
         }
+        if (hasPendingInline) pendingInlineCaseStatement = null;
         processedAnyLine = true;
         showExecutionTracker(lineNumber, cleanLine);
 
@@ -2961,9 +2991,7 @@ function executeNextLine() {
 
         try {
 
-            if (
-                lower === "start"
-            ) {
+            if (lower === "start" || /^begin(?:\s+.+)?$/i.test(cleanLine)) {
 
                 currentLine++;
 
@@ -2971,9 +2999,7 @@ function executeNextLine() {
             }
 
 
-            if (
-                lower === "stop"
-            ) {
+            if (lower === "stop" || lower === "end") {
 
                 if (
                     stepByStepMode
@@ -3012,15 +3038,17 @@ function executeNextLine() {
                 continue;
             }
 
-            const caseHeader = cleanLine.match(/^case\s+(.+)\s+of$/i);
-            if (caseHeader) {
-                const selectorValue = evaluateExpression(caseHeader[1]);
+            const caseSelector = parseCaseHeader(cleanLine);
+            if (caseSelector) {
+                const selectorValue = evaluateExpression(caseSelector);
                 const selected = selectCaseArm(currentLine, selectorValue);
-                currentLine = selected.armIndex < 0 ? selected.endIndex + 1 : selected.armIndex + 1;
+                if (selected.armIndex < 0) currentLine = selected.endIndex + 1;
+                else if (selected.statement) { pendingInlineCaseStatement = selected.statement; currentLine = selected.armIndex; }
+                else currentLine = selected.armIndex + 1;
                 continue;
             }
 
-            if (/^otherwise\s*:|^.+:$/i.test(cleanLine)) {
+            if (!hasPendingInline && parseCaseArm(cleanLine)) {
                 const caseStart = findEnclosingCaseStart(currentLine);
                 const endCase = caseStart < 0 ? -1 : findMatchingEndCase(caseStart);
                 if (endCase < 0) throw new Error("CASE arm has no matching ENDCASE.");
@@ -3028,7 +3056,7 @@ function executeNextLine() {
                 continue;
             }
 
-            if (lower === "endcase") {
+            if (/^endcase$/i.test(cleanLine)) {
                 currentLine++;
                 continue;
             }
@@ -3183,7 +3211,7 @@ function executeNextLine() {
             }
 
 
-            const forHeader = cleanLine.match(/^for\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+?)\s+to\s+(.+?)(?:\s+step\s+(.+))?$/i);
+            const forHeader = cleanLine.match(/^for\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:=|←)\s*(.+?)\s+to\s+(.+?)(?:\s+step\s+(.+))?$/i);
             if (forHeader) {
                 const [, name, firstText, lastText, stepText] = forHeader;
                 const variable = variables[name];
@@ -3279,13 +3307,11 @@ function executeNextLine() {
             }
 
 
-            if (
-                lower.startsWith("read ")
-            ) {
+            if (/^(read|input)\s+/i.test(cleanLine)) {
 
                 const variableName =
                     cleanLine
-                        .substring(5)
+                        .substring(cleanLine.search(/\s/) + 1)
                         .trim();
 
 
@@ -3481,10 +3507,7 @@ function executeNextLine() {
             }
 
 
-            const assignment =
-                cleanLine.match(
-                    /^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+)$/
-                );
+            const assignment = cleanLine.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*(?:=|←)\s*(.+)$/);
 
 
             if (
@@ -3997,10 +4020,10 @@ function formatPseudocode() {
                 clean
             ).toLowerCase();
 
-        const caseHeader = clean.match(/^case\s+(.+)\s+of$/i);
-        if (caseHeader) {
+        const caseSelector = parseCaseHeader(clean);
+        if (caseSelector) {
             if (inDeclare) { inDeclare = false; level = Math.max(1, level - 1); }
-            formatted.push(INDENT.repeat(level) + "case " + caseHeader[1].trim() + " of");
+            formatted.push(INDENT.repeat(level) + "case of " + caseSelector);
             caseFrames.push({ base: level });
             level++;
             continue;
@@ -4013,20 +4036,21 @@ function formatPseudocode() {
             continue;
         }
 
-        const caseArm = clean.match(/^(otherwise|.+):$/i);
+        const caseArm = parseCaseArm(clean);
         if (caseArm && caseFrames.length) {
             const frame = caseFrames[caseFrames.length - 1];
             level = frame.base + 1;
-            formatted.push(INDENT.repeat(level) + (/^otherwise$/i.test(caseArm[1].trim()) ? "otherwise:" : caseArm[1].trim() + ":"));
+            const label = /^otherwise$/i.test(caseArm.label) ? "otherwise" : caseArm.label;
+            formatted.push(INDENT.repeat(level) + label + " :" + (caseArm.statement ? " " + caseArm.statement : ""));
             level = frame.base + 2;
             continue;
         }
 
-        const formattedFor = clean.match(/^for\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+?)\s+to\s+(.+?)(?:\s+step\s+(.+))?$/i);
+        const formattedFor = clean.match(/^for\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:=|←)\s*(.+?)\s+to\s+(.+?)(?:\s+step\s+(.+))?$/i);
         if (formattedFor) {
             if (inDeclare) { inDeclare = false; level = Math.max(1, level - 1); }
             const [, name, first, last, step] = formattedFor;
-            formatted.push(INDENT.repeat(level) + `for ${name} = ${first.trim()} to ${last.trim()}${step ? " step " + step.trim() : ""}`);
+            formatted.push(INDENT.repeat(level) + `for ${name} ← ${first.trim()} to ${last.trim()}${step ? " step " + step.trim() : ""}`);
             loopIndentFrames.push({ type: "for", base: level });
             level++;
             continue;
@@ -4071,9 +4095,7 @@ function formatPseudocode() {
            START
         */
 
-        if (
-            lower === "start"
-        ) {
+        if (lower === "start" || /^begin(?:\s+.+)?$/i.test(clean)) {
 
             level = 0;
 
@@ -4093,9 +4115,7 @@ function formatPseudocode() {
            STOP
         */
 
-        if (
-            lower === "stop"
-        ) {
+        if (lower === "stop" || lower === "end") {
 
             level = 0;
 
@@ -4253,7 +4273,7 @@ function formatPseudocode() {
            PRINT and READ
         */
 
-        const ioCommand = clean.match(/^(print|output|read)\b([\s\S]*)$/i);
+        const ioCommand = clean.match(/^(print|output|read|input)\b([\s\S]*)$/i);
 
         if (ioCommand) {
 
