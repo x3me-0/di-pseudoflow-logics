@@ -1048,8 +1048,12 @@
         .editor-actions-top button,.editor-actions-top select,.focus-exit { border:1px solid #334155;border-radius:7px;padding:7px 9px;background:#111b2b;color:#dbe8f5;cursor:pointer;font:inherit;font-size:12px; }
         .btn-pause-run:disabled { opacity:.48;cursor:not-allowed; }
         .hl-variable-match { background:rgba(250,204,21,.32);border-radius:2px;box-shadow:0 0 0 1px rgba(250,204,21,.55); }
-        .workspace.layout-stacked { grid-template-columns:minmax(0,1fr); }
-        .workspace.layout-stacked .editor-panel,.workspace.layout-stacked .output-panel { height:420px; }
+        .workspace.layout-stacked { height:clamp(560px,calc(100vh - 360px),760px);min-height:0;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(320px,1fr) minmax(185px,.58fr);gap:0; }
+        .workspace.layout-stacked.output-hidden { grid-template-rows:minmax(0,1fr); }
+        .workspace.layout-stacked .editor-panel,.workspace.layout-stacked .output-panel { height:auto;min-height:0;border-radius:0; }
+        .workspace.layout-stacked .editor-panel { border-radius:8px 8px 0 0; }
+        .workspace.layout-stacked .output-panel { border-top:2px solid #334155;border-radius:0 0 8px 8px; }
+        .workspace.layout-stacked .editor-wrapper,.workspace.layout-stacked .output-console { min-height:0; }
         .workspace.output-hidden { grid-template-columns:minmax(0,1fr); }
         .focus-exit { position:fixed;z-index:500;top:12px;right:14px; }
         #appRoot.focus-mode { width:100%;margin:0;padding-top:42px; }
@@ -1058,13 +1062,13 @@
         #appRoot.focus-mode .workspace { height:calc(100vh - 54px);min-height:0;grid-template-columns:minmax(0,1fr) minmax(300px,.75fr); }
         #appRoot.focus-mode .workspace .editor-panel,#appRoot.focus-mode .workspace .output-panel { height:calc(100vh - 54px); }
         #appRoot.focus-mode .workspace.output-hidden { grid-template-columns:minmax(0,1fr); }
-        #appRoot.focus-mode .workspace.layout-stacked { grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(280px,1fr) minmax(240px,.85fr); }
+        #appRoot.focus-mode .workspace.layout-stacked { grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(320px,1fr) minmax(185px,.58fr); }
         #appRoot.focus-mode .workspace.layout-stacked .editor-panel,#appRoot.focus-mode .workspace.layout-stacked .output-panel { height:auto;min-height:0; }
         #appRoot.focus-mode .workspace.output-hidden { grid-template-rows:minmax(0,1fr); }
         body.focus-active .sidebar-toggle { display:none; }
         #navProfile,#profilePage,#profileGate,.sidebar-profile { display:none!important; }
         #pseudocode { white-space:pre;tab-size:4;-moz-tab-size:4; }
-        @media(max-width:760px){.sidebar-collapsed .app{width:100%;margin-left:0}.workspace.layout-stacked .editor-panel,.workspace.layout-stacked .output-panel{height:420px}}
+        @media(max-width:760px){.sidebar-collapsed .app{width:100%;margin-left:0}.workspace.layout-stacked .editor-panel,.workspace.layout-stacked .output-panel{height:auto}}
         .app-sidebar { position: fixed; z-index: 120; inset: 0 auto 0 0; width: 206px; padding: 18px 14px; display:flex; flex-direction:column; gap:18px; background:#0b1220; border-right:1px solid #253247; box-sizing:border-box; }
         .sidebar-brand { display:flex; align-items:center; gap:10px; padding:3px 5px 18px; border-bottom:1px solid #253247; color:#f8fafc; font-weight:800; line-height:1.15; }
         .sidebar-brand img { width:38px;height:38px;object-fit:contain; }
@@ -1611,7 +1615,7 @@
                       <button type="button" id="editorUndoButton" title="Undo (Ctrl+Z)">↶ Undo</button>
                       <button type="button" id="editorRedoButton" title="Redo (Ctrl+Y)">↷ Redo</button>
                       <label for="workspaceLayoutSelect" class="visually-hidden">Pseudocode and output layout</label>
-                      <select id="workspaceLayoutSelect" title="Panel layout"><option value="side-by-side">Side by side</option><option value="stacked">Stacked</option></select>
+                      <select id="workspaceLayoutSelect" title="Panel layout"><option value="side-by-side">Side by side</option><option value="stacked">Editor + bottom output</option></select>
                       <button type="button" id="toggleOutputButton" aria-expanded="true">Hide Output</button>
                       <button type="button" id="focusWorkspaceButton" title="Show only pseudocode and output">⛶ Focus</button>
                     </div>
@@ -1671,6 +1675,16 @@
                         disabled
                     >
                         ⏸ Pause Run
+                    </button>
+
+                    <button
+                        class="btn btn-danger"
+                        id="stopRunButton"
+                        type="button"
+                        onclick="stopProgram()"
+                        disabled
+                    >
+                        ■ Stop
                     </button>
 
                     <button
@@ -1745,12 +1759,10 @@
 
                         <div>
 
-                            <h2>
-                                Output
-                            </h2>
+                            <h2>Terminal</h2>
 
                             <span>
-                                Program results
+                                Program output
                             </span>
 
                         </div>
@@ -2557,6 +2569,8 @@ function updateProjectFieldsFromState({ resetHistory = true } = {}) {
         pseudocode.value =
             currentProject.pseudocode
             || "";
+
+        if (resetHistory) window.resetPseudocodeHistory?.();
 
 
         if (
@@ -7206,22 +7220,93 @@ const originalApplyPreferences=applyPreferences;
 applyPreferences=function(){originalApplyPreferences();resetAutoSaveTimer();};
 initializeProfileGate();
 
-// Workspace controls: keep the editor's native undo stack and clipboard text intact.
+// Keep an explicit text history so editor helpers and ordinary typing share undo/redo.
 const editorForHistory = document.getElementById("pseudocode");
-document.getElementById("editorUndoButton").addEventListener("click",()=>{editorForHistory.focus();document.execCommand("undo");updateEditorVisuals();});
-document.getElementById("editorRedoButton").addEventListener("click",()=>{editorForHistory.focus();document.execCommand("redo");updateEditorVisuals();});
+const editorUndoButton = document.getElementById("editorUndoButton");
+const editorRedoButton = document.getElementById("editorRedoButton");
+const CODE_HISTORY_LIMIT = 400;
+let codeHistory = [];
+let codeHistoryIndex = -1;
+let codeHistoryLastInputType = "";
+let codeHistoryLastTime = 0;
+let codeHistoryBeforeInput = null;
+function codeHistorySnapshot() {
+    return { value: editorForHistory.value, start: editorForHistory.selectionStart, end: editorForHistory.selectionEnd };
+}
+function updateCodeHistoryButtons() {
+    editorUndoButton.disabled = codeHistoryIndex <= 0;
+    editorRedoButton.disabled = codeHistoryIndex < 0 || codeHistoryIndex >= codeHistory.length - 1;
+}
+function resetPseudocodeHistory() {
+    codeHistory = [codeHistorySnapshot()];
+    codeHistoryIndex = 0;
+    codeHistoryLastInputType = "";
+    codeHistoryLastTime = 0;
+    codeHistoryBeforeInput = null;
+    updateCodeHistoryButtons();
+}
+function recordPseudocodeChange(inputType = "command") {
+    if (!editorForHistory) return;
+    const next = codeHistorySnapshot();
+    const current = codeHistory[codeHistoryIndex];
+    if (current && current.value === next.value) return;
+    if (codeHistoryIndex < codeHistory.length - 1) codeHistory.splice(codeHistoryIndex + 1);
+    const now = Date.now();
+    const canGroupTyping = inputType === "insertText" && codeHistoryLastInputType === "insertText" &&
+        now - codeHistoryLastTime < 650 && codeHistoryBeforeInput &&
+        codeHistoryBeforeInput.start === codeHistoryBeforeInput.end &&
+        current?.start === codeHistoryBeforeInput.start;
+    if (canGroupTyping && codeHistoryIndex > 0) {
+        codeHistory[codeHistoryIndex] = next;
+    } else {
+        codeHistory.push(next);
+        codeHistoryIndex = codeHistory.length - 1;
+    }
+    if (codeHistory.length > CODE_HISTORY_LIMIT) {
+        const excess = codeHistory.length - CODE_HISTORY_LIMIT;
+        codeHistory.splice(0, excess);
+        codeHistoryIndex = Math.max(0, codeHistoryIndex - excess);
+    }
+    codeHistoryLastInputType = inputType;
+    codeHistoryLastTime = now;
+    codeHistoryBeforeInput = null;
+    updateCodeHistoryButtons();
+}
+function applyCodeHistory(index) {
+    if (index < 0 || index >= codeHistory.length) return;
+    codeHistoryIndex = index;
+    const snapshot = codeHistory[index];
+    editorForHistory.value = snapshot.value;
+    editorForHistory.focus();
+    editorForHistory.setSelectionRange(snapshot.start, snapshot.end);
+    updateEditorVisuals();
+    updateVariableAutocomplete();
+    setEditorStatus("Editing");
+    codeHistoryLastInputType = "";
+    codeHistoryLastTime = 0;
+    updateCodeHistoryButtons();
+}
+function undoPseudocode() { if (codeHistoryIndex > 0) applyCodeHistory(codeHistoryIndex - 1); }
+function redoPseudocode() { if (codeHistoryIndex < codeHistory.length - 1) applyCodeHistory(codeHistoryIndex + 1); }
+window.recordPseudocodeChange = recordPseudocodeChange;
+window.resetPseudocodeHistory = resetPseudocodeHistory;
+editorForHistory.addEventListener("beforeinput", () => { codeHistoryBeforeInput = { start: editorForHistory.selectionStart, end: editorForHistory.selectionEnd }; });
+editorForHistory.addEventListener("input", event => recordPseudocodeChange(event.inputType || "input"));
+editorUndoButton.addEventListener("click", undoPseudocode);
+editorRedoButton.addEventListener("click", redoPseudocode);
 editorForHistory.addEventListener("keydown",event=>{
     if(!(event.ctrlKey||event.metaKey))return;
     const key=event.key.toLowerCase();
-    if(key==="z"){event.preventDefault();document.execCommand(event.shiftKey?"redo":"undo");updateEditorVisuals();}
-    else if(key==="y"){event.preventDefault();document.execCommand("redo");updateEditorVisuals();}
+    if(key==="z"){event.preventDefault();event.stopPropagation();event.shiftKey?redoPseudocode():undoPseudocode();}
+    else if(key==="y"){event.preventDefault();event.stopPropagation();redoPseudocode();}
 });
+resetPseudocodeHistory();
 const editorWorkspaceGrid=document.querySelector("#editorWorkspace .workspace");
 const outputPanelElement=document.querySelector(".output-panel");
 const layoutSelect=document.getElementById("workspaceLayoutSelect");
-layoutSelect.value=localStorage.getItem("dpf-workspace-layout")||"side-by-side";
+layoutSelect.value=localStorage.getItem("dpf-workspace-layout-v2")||"stacked";
 editorWorkspaceGrid.classList.toggle("layout-stacked",layoutSelect.value==="stacked");
-layoutSelect.addEventListener("change",()=>{editorWorkspaceGrid.classList.toggle("layout-stacked",layoutSelect.value==="stacked");localStorage.setItem("dpf-workspace-layout",layoutSelect.value);});
+layoutSelect.addEventListener("change",()=>{editorWorkspaceGrid.classList.toggle("layout-stacked",layoutSelect.value==="stacked");localStorage.setItem("dpf-workspace-layout-v2",layoutSelect.value);});
 const outputToggle=document.getElementById("toggleOutputButton");
 function setOutputVisible(visible){outputPanelElement.hidden=!visible;editorWorkspaceGrid.classList.toggle("output-hidden",!visible);outputToggle.textContent=visible?"Hide Output":"Show Output";outputToggle.setAttribute("aria-expanded",String(visible));window.dpfPreferences.showExecutionMessages=visible;localStorage.setItem(profileSettingsKey(),JSON.stringify(window.dpfPreferences));}
 setOutputVisible(localStorage.getItem("dpf-output-visible")==="false"?false:true);

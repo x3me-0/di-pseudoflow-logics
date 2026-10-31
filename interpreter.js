@@ -18,11 +18,14 @@ let selectedIdentifierName = null;
 
 function syncExecutionControls() {
     const button = document.getElementById("pauseRunButton");
-    if (!button) return;
     const active = programLines.length > 0 && !executionFinished;
-    button.disabled = !active;
-    button.textContent = executionPaused ? "▶ Resume" : "⏸ Pause Run";
-    button.setAttribute("aria-pressed", String(executionPaused));
+    if (button) {
+        button.disabled = !active;
+        button.textContent = executionPaused ? "▶ Resume" : "⏸ Pause Run";
+        button.setAttribute("aria-pressed", String(executionPaused));
+    }
+    const stopButton = document.getElementById("stopRunButton");
+    if (stopButton) stopButton.disabled = !active;
 }
 
 function toggleExecutionPause() {
@@ -36,6 +39,19 @@ function toggleExecutionPause() {
         setEditorStatus(waitingForInput ? "Waiting for Input" : "Running");
         if (!waitingForInput) executeNextLine();
     }
+    syncExecutionControls();
+}
+
+function stopProgram() {
+    if (!programLines.length || executionFinished) return;
+    if (executionDelayTimer) clearTimeout(executionDelayTimer);
+    executionDelayTimer = null;
+    executionPaused = false;
+    executionFinished = true;
+    clearExecutionTracker();
+    hideInput();
+    setEditorStatus("Stopped");
+    printOutput("\nProgram stopped.");
     syncExecutionControls();
 }
 
@@ -80,6 +96,7 @@ function clearProgram() {
         );
 
     editor.value = "";
+    window.recordPseudocodeChange?.("command");
 
     variables = {};
     programLines = [];
@@ -4387,6 +4404,8 @@ function formatPseudocode() {
     editor.value =
         formatted.join("\n");
 
+    window.recordPseudocodeChange?.("command");
+
 
     updateEditorVisuals();
 
@@ -4675,7 +4694,6 @@ function adjustCurrentLineIndent() {
             actualEnd
         );
 
-
     const difference =
         newLine.length -
         oldLength;
@@ -4692,6 +4710,7 @@ function adjustCurrentLineIndent() {
     editor.selectionEnd =
         editor.selectionStart;
 
+    window.recordPseudocodeChange?.("command");
 
     updateEditorVisuals();
 }
@@ -4735,6 +4754,8 @@ Stop`;
     editor.value =
         example;
 
+    window.recordPseudocodeChange?.("command");
+
 
     updateEditorVisuals();
 
@@ -4769,6 +4790,7 @@ function hideVariableAutocomplete() {
 }
 
 function updateVariableAutocomplete() {
+    const previousSelection = variableSuggestionItems[selectedVariableSuggestion];
     const range = getTokenRangeAtCaret(editor.value, editor.selectionStart, editor.selectionEnd);
     if (!range) { hideVariableAutocomplete(); return; }
     const prefix = editor.value.slice(range.start, editor.selectionStart);
@@ -4781,7 +4803,8 @@ function updateVariableAutocomplete() {
     );
     if (!variableSuggestionItems.length) { hideVariableAutocomplete(); return; }
     variableSuggestionRange = range;
-    selectedVariableSuggestion = 0;
+    const preservedIndex = previousSelection ? variableSuggestionItems.indexOf(previousSelection) : -1;
+    selectedVariableSuggestion = preservedIndex >= 0 ? preservedIndex : 0;
 
     variableAutocomplete.replaceChildren();
     variableSuggestionItems.forEach((name, index) => {
@@ -4823,6 +4846,7 @@ function acceptVariableSuggestion(index = selectedVariableSuggestion) {
     const { start, end } = variableSuggestionRange;
     editor.value = editor.value.slice(0, start) + name + editor.value.slice(end);
     editor.setSelectionRange(start + name.length, start + name.length);
+    window.recordPseudocodeChange?.("command");
     hideVariableAutocomplete();
     updateEditorVisuals();
     setEditorStatus("Editing");
@@ -4985,6 +5009,8 @@ editor.addEventListener(
                             end -
                             removeCount
                         );
+
+                    window.recordPseudocodeChange?.("command");
                 }
 
 
@@ -5013,6 +5039,8 @@ editor.addEventListener(
                 editor.selectionEnd =
                     start +
                     INDENT.length;
+
+            window.recordPseudocodeChange?.("command");
 
 
             updateEditorVisuals();
@@ -5083,6 +5111,8 @@ editor.addEventListener(
             editor.selectionStart =
                 editor.selectionEnd =
                     newCursor;
+
+            window.recordPseudocodeChange?.("command");
 
 
             updateEditorVisuals();
