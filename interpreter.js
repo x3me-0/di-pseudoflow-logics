@@ -6,6 +6,7 @@ let waitingForInput = false;
 let inputVariable = null;
 
 let executionFinished = false;
+let executionPaused = false;
 let stepByStepMode = false;
 let stepNumber = 0;
 let pendingElseIfLines = new Set();
@@ -13,6 +14,30 @@ let loopFrames = [];
 let pendingInlineCaseStatement = null;
 let executingLineNumber = null;
 let executionDelayTimer = null;
+let selectedIdentifierName = null;
+
+function syncExecutionControls() {
+    const button = document.getElementById("pauseRunButton");
+    if (!button) return;
+    const active = programLines.length > 0 && !executionFinished;
+    button.disabled = !active;
+    button.textContent = executionPaused ? "▶ Resume" : "⏸ Pause Run";
+    button.setAttribute("aria-pressed", String(executionPaused));
+}
+
+function toggleExecutionPause() {
+    if (!programLines.length || executionFinished) return;
+    executionPaused = !executionPaused;
+    if (executionPaused) {
+        if (executionDelayTimer) clearTimeout(executionDelayTimer);
+        executionDelayTimer = null;
+        setEditorStatus("Paused");
+    } else {
+        setEditorStatus(waitingForInput ? "Waiting for Input" : "Running");
+        if (!waitingForInput) executeNextLine();
+    }
+    syncExecutionControls();
+}
 
 
 /* =========================================================
@@ -64,6 +89,7 @@ function clearProgram() {
     pendingInlineCaseStatement = null;
 
     executionFinished = false;
+    executionPaused = false;
     stepByStepMode = false;
 
     updateEditorVisuals();
@@ -73,6 +99,7 @@ function clearProgram() {
     hideInput();
 
     setEditorStatus("Ready");
+    syncExecutionControls();
 }
 
 
@@ -202,7 +229,7 @@ const highlightTypes = new Set([
 ]);
 
 
-function highlightCodeLine(line) {
+function highlightCodeLine(line, activeIdentifier = null) {
 
     let result = "";
 
@@ -363,35 +390,15 @@ function highlightCodeLine(line) {
                 word.toLowerCase();
 
 
-            if (
-                highlightKeywords.has(
-                    lowerWord
-                )
-            ) {
-
-                result +=
-                    '<span class="hl-keyword">' +
-                    escapeHtml(word) +
-                    "</span>";
-
-            } else if (
-                highlightTypes.has(
-                    lowerWord
-                )
-            ) {
-
-                result +=
-                    '<span class="hl-type">' +
-                    escapeHtml(word) +
-                    "</span>";
-
-            } else {
-
-                result +=
-                    '<span class="hl-identifier">' +
-                    escapeHtml(word) +
-                    "</span>";
-            }
+            const tokenClass = highlightKeywords.has(lowerWord)
+                ? "hl-keyword"
+                : highlightTypes.has(lowerWord)
+                    ? "hl-type"
+                    : "hl-identifier";
+            const tokenMarkup = `<span class="${tokenClass}">${escapeHtml(word)}</span>`;
+            result += activeIdentifier && word.toLowerCase() === activeIdentifier.toLowerCase()
+                ? `<span class="hl-variable-match">${tokenMarkup}</span>`
+                : tokenMarkup;
 
 
             i = end;
@@ -456,6 +463,47 @@ function highlightCodeLine(line) {
 }
 
 
+function getDeclaredVariableNames(source) {
+    const names = new Set();
+    const declarationPattern = /^\s*([A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*)\s+as\s+(?:boolean|character|float|integer|real|string|constant)\b/gim;
+    let match;
+    while ((match = declarationPattern.exec(source))) {
+        match[1].split(",").forEach(name => names.add(name.trim()));
+    }
+    return Array.from(names);
+}
+
+function getTokenRangeAtCaret(text, caret, selectionEnd = caret) {
+    if (selectionEnd > caret) {
+        const selected = text.slice(caret, selectionEnd);
+        if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(selected)) return { word: selected, start: caret, end: selectionEnd };
+    }
+    let position = caret;
+    if (position < text.length && /[A-Za-z0-9_]/.test(text[position])) {
+        // Caret is at the start or middle of an identifier.
+    } else if (position > 0 && /[A-Za-z0-9_]/.test(text[position - 1])) {
+        position--;
+    } else return null;
+    let start = position;
+    let end = position + 1;
+    while (start > 0 && /[A-Za-z0-9_]/.test(text[start - 1])) start--;
+    while (end < text.length && /[A-Za-z0-9_]/.test(text[end])) end++;
+    const word = text.slice(start, end);
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(word)) return null;
+    return { word, start, end };
+}
+
+function getIdentifierAtCaret(editorElement) {
+    let range = getTokenRangeAtCaret(editorElement.value, editorElement.selectionStart, editorElement.selectionEnd);
+    if (range && editorElement.selectionEnd > editorElement.selectionStart && editorElement.selectionEnd - editorElement.selectionStart !== range.word.length) {
+        range = getTokenRangeAtCaret(editorElement.value, editorElement.selectionStart, editorElement.selectionStart);
+    }
+    if (!range) return null;
+    const lower = range.word.toLowerCase();
+    if (highlightKeywords.has(lower) || highlightTypes.has(lower)) return null;
+    return range;
+}
+
 function updateHighlight() {
 
     const editor =
@@ -472,9 +520,11 @@ function updateHighlight() {
     const lines =
         editor.value.split("\n");
 
+    selectedIdentifierName = getIdentifierAtCaret(editor)?.word || null;
+
 
     highlight.innerHTML = lines.map((line, index) => {
-        const content = highlightCodeLine(line) || " ";
+        const content = highlightCodeLine(line, selectedIdentifierName) || " ";
         return index + 1 === executingLineNumber
             ? `<span class="execution-current-line">${content}</span>`
             : content;
@@ -553,7 +603,6 @@ function showExecutionTracker(lineNumber, sourceLine) {
         else if (lineTop + lineHeight > visibleBottom) editor.scrollTop = lineTop + lineHeight - editor.clientHeight + paddingBottom;
     }
     updateEditorVisuals();
-    printOutput(`▶ Line ${lineNumber}: ${sourceLine}`);
 }
 
 
@@ -2191,6 +2240,10 @@ function showError(
     lineNumber = currentLine + 1
 ) {
 
+    executionFinished = true;
+    executionPaused = false;
+    syncExecutionControls();
+
     const sourceLine =
         programLines[
             lineNumber - 1
@@ -2624,7 +2677,7 @@ function performSyntaxCheck() {
    CHECK SYNTAX
 ========================================================= */
 
-function checkSyntax() {
+function checkSyntax(options = {}) {
 
     clearOutput();
 
@@ -2636,6 +2689,8 @@ function checkSyntax() {
     if (
         errors.length === 0
     ) {
+
+        if (options.quiet) return true;
 
         printOutput(
             "✓ Syntax check passed.\n\n" +
@@ -2704,6 +2759,8 @@ function runProgram() {
 
     if (executionDelayTimer) clearTimeout(executionDelayTimer);
     executionDelayTimer = null;
+    executionPaused = false;
+    executionFinished = false;
     clearExecutionTracker();
 
     if (window.dpfPreferences?.stepByStepMode) { runStepByStep(); return; }
@@ -2718,6 +2775,7 @@ function runProgram() {
     pendingElseIfLines = new Set();
     loopFrames = [];
     pendingInlineCaseStatement = null;
+    syncExecutionControls();
 
 
     stepByStepMode = false;
@@ -2730,7 +2788,7 @@ function runProgram() {
 
 
     const syntaxValid =
-        checkSyntax();
+        checkSyntax({ quiet: true });
 
 
     if (
@@ -2752,6 +2810,7 @@ function runProgram() {
     currentLine = 0;
 
     executionFinished = false;
+    syncExecutionControls();
 
 
     setEditorStatus(
@@ -2771,6 +2830,8 @@ function runStepByStep() {
 
     if (executionDelayTimer) clearTimeout(executionDelayTimer);
     executionDelayTimer = null;
+    executionPaused = false;
+    executionFinished = false;
     clearExecutionTracker();
 
     if (window.dpfPreferences?.clearOutputBeforeRun !== false) clearOutput();
@@ -2784,6 +2845,7 @@ function runStepByStep() {
     pendingElseIfLines = new Set();
     loopFrames = [];
     pendingInlineCaseStatement = null;
+    syncExecutionControls();
 
 
     stepByStepMode = true;
@@ -2791,7 +2853,7 @@ function runStepByStep() {
 
 
     const syntaxValid =
-        checkSyntax();
+        checkSyntax({ quiet: true });
 
 
     if (
@@ -2813,6 +2875,7 @@ function runStepByStep() {
     currentLine = 0;
 
     executionFinished = false;
+    syncExecutionControls();
 
 
     printOutput(
@@ -2929,6 +2992,8 @@ function selectCaseArm(caseIndex, selectorValue) {
 
 function executeNextLine() {
 
+    if (executionPaused || executionFinished) return;
+
     if (
         waitingForInput
     ) {
@@ -3018,6 +3083,8 @@ function executeNextLine() {
 
 
                 executionFinished = true;
+                executionPaused = false;
+                syncExecutionControls();
 
                 hideInput();
 
@@ -3615,6 +3682,8 @@ function executeNextLine() {
 
 
             executionFinished = true;
+            executionPaused = false;
+            syncExecutionControls();
 
             return;
         }
@@ -3622,6 +3691,8 @@ function executeNextLine() {
 
 
     executionFinished = true;
+    executionPaused = false;
+    syncExecutionControls();
 
     setEditorStatus(
         "Finished"
@@ -4686,18 +4757,127 @@ const editor =
         "pseudocode"
     );
 
+const variableAutocomplete = document.getElementById("variableAutocomplete");
+let variableSuggestionItems = [];
+let selectedVariableSuggestion = 0;
+let variableSuggestionRange = null;
+
+function hideVariableAutocomplete() {
+    variableAutocomplete.hidden = true;
+    variableSuggestionItems = [];
+    variableSuggestionRange = null;
+}
+
+function updateVariableAutocomplete() {
+    const range = getTokenRangeAtCaret(editor.value, editor.selectionStart, editor.selectionEnd);
+    if (!range) { hideVariableAutocomplete(); return; }
+    const prefix = editor.value.slice(range.start, editor.selectionStart);
+    if (!prefix || highlightKeywords.has(prefix.toLowerCase()) || highlightTypes.has(prefix.toLowerCase())) {
+        hideVariableAutocomplete();
+        return;
+    }
+    variableSuggestionItems = getDeclaredVariableNames(editor.value).filter(name =>
+        name !== range.word && name.toLowerCase().startsWith(prefix.toLowerCase())
+    );
+    if (!variableSuggestionItems.length) { hideVariableAutocomplete(); return; }
+    variableSuggestionRange = range;
+    selectedVariableSuggestion = 0;
+
+    variableAutocomplete.replaceChildren();
+    variableSuggestionItems.forEach((name, index) => {
+        const option = document.createElement("button");
+        option.type = "button";
+        option.setAttribute("role", "option");
+        option.setAttribute("aria-selected", String(index === selectedVariableSuggestion));
+        option.textContent = name;
+        option.dataset.suggestionIndex = String(index);
+        variableAutocomplete.appendChild(option);
+    });
+
+    const codeArea = editor.parentElement;
+    const styles = window.getComputedStyle(editor);
+    const lineHeight = Number.parseFloat(styles.lineHeight) || 22;
+    const cursor = editor.selectionStart;
+    const lineStart = editor.value.lastIndexOf("\n", cursor - 1) + 1;
+    const lineNumber = editor.value.slice(0, cursor).split("\n").length - 1;
+    const textBeforeCaret = editor.value.slice(lineStart, cursor);
+    const measureCanvas = document.createElement("canvas");
+    const context = measureCanvas.getContext("2d");
+    context.font = `${styles.fontSize} ${styles.fontFamily}`;
+    let left = 18 + context.measureText(textBeforeCaret).width - editor.scrollLeft;
+    let top = 16 + lineNumber * lineHeight - editor.scrollTop + lineHeight + 3;
+
+    variableAutocomplete.hidden = false;
+    const maxLeft = Math.max(4, codeArea.clientWidth - variableAutocomplete.offsetWidth - 4);
+    left = Math.max(4, Math.min(left, maxLeft));
+    if (top + variableAutocomplete.offsetHeight > codeArea.clientHeight) {
+        top = Math.max(4, top - variableAutocomplete.offsetHeight - lineHeight - 6);
+    }
+    variableAutocomplete.style.left = `${left}px`;
+    variableAutocomplete.style.top = `${top}px`;
+}
+
+function acceptVariableSuggestion(index = selectedVariableSuggestion) {
+    if (!variableSuggestionRange || !variableSuggestionItems[index]) return false;
+    const name = variableSuggestionItems[index];
+    const { start, end } = variableSuggestionRange;
+    editor.value = editor.value.slice(0, start) + name + editor.value.slice(end);
+    editor.setSelectionRange(start + name.length, start + name.length);
+    hideVariableAutocomplete();
+    updateEditorVisuals();
+    setEditorStatus("Editing");
+    editor.focus();
+    return true;
+}
+
+function handleVariableAutocompleteKey(event) {
+    if (variableAutocomplete.hidden) return false;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        event.stopPropagation();
+        selectedVariableSuggestion = (selectedVariableSuggestion + (event.key === "ArrowDown" ? 1 : variableSuggestionItems.length - 1)) % variableSuggestionItems.length;
+        Array.from(variableAutocomplete.children).forEach((option, index) => option.setAttribute("aria-selected", String(index === selectedVariableSuggestion)));
+        return true;
+    }
+    if (event.key === "Enter" || event.key === "Tab") {
+        event.preventDefault();
+        event.stopPropagation();
+        return acceptVariableSuggestion();
+    }
+    if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        hideVariableAutocomplete();
+        return true;
+    }
+    return false;
+}
+
+variableAutocomplete.addEventListener("mousedown", event => event.preventDefault());
+variableAutocomplete.addEventListener("click", event => {
+    const option = event.target.closest("[data-suggestion-index]");
+    if (option) acceptVariableSuggestion(Number(option.dataset.suggestionIndex));
+});
+
 
 editor.addEventListener(
     "input",
     function () {
 
         updateEditorVisuals();
+        updateVariableAutocomplete();
 
         setEditorStatus(
             "Editing"
         );
     }
 );
+
+["click", "keyup", "mouseup", "select", "focus"].forEach(type => editor.addEventListener(type, () => {
+    updateEditorVisuals();
+    updateVariableAutocomplete();
+}));
+editor.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== variableAutocomplete) hideVariableAutocomplete(); }, 0));
 
 
 editor.addEventListener(
@@ -4716,6 +4896,8 @@ editor.addEventListener(
 editor.addEventListener(
     "keydown",
     function (event) {
+
+        if (handleVariableAutocompleteKey(event)) return;
 
         /*
            TAB

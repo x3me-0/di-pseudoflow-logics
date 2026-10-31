@@ -1039,12 +1039,15 @@
         .app { width: calc(100% - 226px); margin-left: 226px; position: relative; }
         .sidebar-toggle { position:fixed;z-index:300;top:12px;left:14px;width:42px;height:42px;display:grid;place-content:center;gap:4px;border:1px solid #334155;border-radius:9px;background:#111b2b;color:#e2e8f0;cursor:pointer;transition:left .18s ease; }
         body:not(.sidebar-collapsed) .sidebar-toggle { left:154px; }
+        body:not(.sidebar-collapsed) .sidebar-brand { padding-top:50px; }
         .sidebar-toggle span { display:block;width:19px;height:2px;border-radius:2px;background:currentColor; }
         .sidebar-collapsed .app-sidebar { transform:translateX(-105%); }
         .app-sidebar { transition:transform .18s ease; }
         .sidebar-collapsed .app { width:100%;margin-left:0; }
         .editor-actions-top { display:flex;align-items:center;gap:7px;flex-wrap:wrap; }
         .editor-actions-top button,.editor-actions-top select,.focus-exit { border:1px solid #334155;border-radius:7px;padding:7px 9px;background:#111b2b;color:#dbe8f5;cursor:pointer;font:inherit;font-size:12px; }
+        .btn-pause-run:disabled { opacity:.48;cursor:not-allowed; }
+        .hl-variable-match { background:rgba(250,204,21,.32);border-radius:2px;box-shadow:0 0 0 1px rgba(250,204,21,.55); }
         .workspace.layout-stacked { grid-template-columns:minmax(0,1fr); }
         .workspace.layout-stacked .editor-panel,.workspace.layout-stacked .output-panel { height:420px; }
         .workspace.output-hidden { grid-template-columns:minmax(0,1fr); }
@@ -1636,12 +1639,16 @@
                         <textarea
                             id="pseudocode"
                             wrap="off"
+                            aria-autocomplete="list"
+                            aria-controls="variableAutocomplete"
                             spellcheck="false"
                             autocomplete="off"
                             autocorrect="off"
                             autocapitalize="off"
                             placeholder="Write your pseudocode here..."
                         ></textarea>
+
+                        <div id="variableAutocomplete" class="variable-autocomplete" role="listbox" aria-label="Variable suggestions" hidden></div>
 
                     </div>
 
@@ -1654,6 +1661,16 @@
                         onclick="runProgram()"
                     >
                         ▶ Run
+                    </button>
+
+                    <button
+                        class="btn btn-secondary btn-pause-run"
+                        id="pauseRunButton"
+                        type="button"
+                        onclick="toggleExecutionPause()"
+                        disabled
+                    >
+                        ⏸ Pause Run
                     </button>
 
                     <button
@@ -1705,7 +1722,7 @@
                     </span>
 
                     <span>
-                        <kbd>Enter</kbd> New line · <kbd>Ctrl</kbd> + <kbd>Z</kbd> Undo · <kbd>Ctrl</kbd> + <kbd>Y</kbd> Redo
+                        <kbd>Enter</kbd> New line · <kbd>Ctrl</kbd> + <kbd>Z</kbd> Undo · <kbd>Ctrl</kbd> + <kbd>Y</kbd> / <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> Redo
                     </span>
 
                 </div>
@@ -7193,6 +7210,12 @@ initializeProfileGate();
 const editorForHistory = document.getElementById("pseudocode");
 document.getElementById("editorUndoButton").addEventListener("click",()=>{editorForHistory.focus();document.execCommand("undo");updateEditorVisuals();});
 document.getElementById("editorRedoButton").addEventListener("click",()=>{editorForHistory.focus();document.execCommand("redo");updateEditorVisuals();});
+editorForHistory.addEventListener("keydown",event=>{
+    if(!(event.ctrlKey||event.metaKey))return;
+    const key=event.key.toLowerCase();
+    if(key==="z"){event.preventDefault();document.execCommand(event.shiftKey?"redo":"undo");updateEditorVisuals();}
+    else if(key==="y"){event.preventDefault();document.execCommand("redo");updateEditorVisuals();}
+});
 const editorWorkspaceGrid=document.querySelector("#editorWorkspace .workspace");
 const outputPanelElement=document.querySelector(".output-panel");
 const layoutSelect=document.getElementById("workspaceLayoutSelect");
