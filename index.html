@@ -758,7 +758,8 @@
 
             font-family: Arial, sans-serif;
 
-            pointer-events: none;
+            pointer-events: auto;
+            cursor: text;
 
             user-select: none;
         }
@@ -873,6 +874,7 @@
         }
 
         .flow-text-editor.visible { display: block; }
+        .flow-text-editor [hidden] { display: none !important; }
         .flow-text-editor-header {
             display: flex; align-items: center; justify-content: space-between; gap: 16px;
             margin: -4px 0 10px; padding: 4px 2px 8px; border-bottom: 1px solid #334155;
@@ -1037,18 +1039,29 @@
     
         /* Home dashboard, local profiles, and preferences */
         .app { width: calc(100% - 226px); margin-left: 226px; position: relative; }
-        .sidebar-toggle { position:fixed;z-index:300;top:12px;left:14px;width:42px;height:42px;display:grid;place-content:center;gap:4px;border:1px solid #334155;border-radius:9px;background:#111b2b;color:#e2e8f0;cursor:pointer;transition:left .18s ease; }
+        .sidebar-toggle { position:fixed;z-index:300;top:12px;left:10px;width:42px;height:42px;display:grid;place-content:center;gap:4px;border:1px solid #334155;border-radius:9px;background:#111b2b;color:#e2e8f0;cursor:pointer;transition:left .18s ease; }
         body:not(.sidebar-collapsed) .sidebar-toggle { left:154px; }
         body:not(.sidebar-collapsed) .sidebar-brand { padding-top:50px; }
         .sidebar-toggle span { display:block;width:19px;height:2px;border-radius:2px;background:currentColor; }
-        .sidebar-collapsed .app-sidebar { transform:translateX(-105%); }
-        .app-sidebar { transition:transform .18s ease; }
-        .sidebar-collapsed .app { width:100%;margin-left:0; }
+        .app-sidebar { transition:width .18s ease,padding .18s ease; }
+        .sidebar-collapsed .app-sidebar { width:64px;padding:64px 7px 12px;transform:none;gap:12px; }
+        .sidebar-collapsed .sidebar-brand { justify-content:center;padding:0 0 12px;border-bottom:1px solid #253247; }
+        .sidebar-collapsed .sidebar-brand img { width:38px;height:38px; }
+        .sidebar-collapsed .sidebar-brand span { display:none; }
+        .sidebar-collapsed .sidebar-nav { gap:7px; }
+        .sidebar-collapsed .sidebar-nav button { width:48px;height:46px;padding:0;text-align:center;font-size:0; }
+        .sidebar-collapsed .sidebar-nav button::before { display:block;font-size:20px;line-height:1; }
+        .sidebar-collapsed #navHome::before { content:"⌂"; }
+        .sidebar-collapsed #navProjects::before { content:"▣"; }
+        .sidebar-collapsed #navSettings::before { content:"⚙"; }
+        .sidebar-collapsed #navProfile::before { content:"●"; }
+        .sidebar-collapsed #headerHelpButton::before { content:"?"; }
+        .sidebar-collapsed .app { width:calc(100% - 64px);margin-left:64px; }
         .editor-actions-top { display:flex;align-items:center;gap:7px;flex-wrap:wrap; }
         .editor-actions-top button,.editor-actions-top select,.focus-exit { border:1px solid #334155;border-radius:7px;padding:7px 9px;background:#111b2b;color:#dbe8f5;cursor:pointer;font:inherit;font-size:12px; }
         .btn-pause-run:disabled { opacity:.48;cursor:not-allowed; }
         .hl-variable-match { background:rgba(250,204,21,.32);border-radius:2px;box-shadow:0 0 0 1px rgba(250,204,21,.55); }
-        .workspace.layout-stacked { height:clamp(560px,calc(100vh - 360px),760px);min-height:0;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(320px,1fr) minmax(185px,.58fr);gap:0; }
+        .workspace.layout-stacked { height:clamp(560px,calc(100vh - 360px),760px);min-height:0;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(320px,1fr) minmax(185px,.45fr);gap:0; }
         .workspace.layout-stacked.output-hidden { grid-template-rows:minmax(0,1fr); }
         .workspace.layout-stacked .editor-panel,.workspace.layout-stacked .output-panel { height:auto;min-height:0;border-radius:0; }
         .workspace.layout-stacked .editor-panel { border-radius:8px 8px 0 0; }
@@ -1062,7 +1075,7 @@
         #appRoot.focus-mode .workspace { height:calc(100vh - 54px);min-height:0;grid-template-columns:minmax(0,1fr) minmax(300px,.75fr); }
         #appRoot.focus-mode .workspace .editor-panel,#appRoot.focus-mode .workspace .output-panel { height:calc(100vh - 54px); }
         #appRoot.focus-mode .workspace.output-hidden { grid-template-columns:minmax(0,1fr); }
-        #appRoot.focus-mode .workspace.layout-stacked { grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(320px,1fr) minmax(185px,.58fr); }
+        #appRoot.focus-mode .workspace.layout-stacked { grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(320px,1fr) minmax(185px,.45fr); }
         #appRoot.focus-mode .workspace.layout-stacked .editor-panel,#appRoot.focus-mode .workspace.layout-stacked .output-panel { height:auto;min-height:0; }
         #appRoot.focus-mode .workspace.output-hidden { grid-template-rows:minmax(0,1fr); }
         body.focus-active .sidebar-toggle { display:none; }
@@ -1217,7 +1230,7 @@
         body[data-theme="light"] .dashboard-action-card { background:#fff;color:#1e293b;border-color:#cbd5e1; }
         body[data-ui-scale="small"] { zoom:.92; }
         body[data-ui-scale="large"] { zoom:1.08; }
-        @media(max-width:760px){.app{width:100%;margin-left:0}.app-sidebar{position:sticky;inset:auto;width:100%;height:auto;padding:8px 10px;flex-direction:row;align-items:center;gap:8px}.sidebar-brand{border:0;padding:4px}.sidebar-brand img{width:30px;height:30px}.sidebar-brand span{display:none}.sidebar-nav{display:flex;gap:3px;overflow:auto}.sidebar-nav button{padding:8px;font-size:12px;white-space:nowrap}.sidebar-profile{margin:0 0 0 auto;padding:0;border:0}.sidebar-profile-summary span:last-child{display:none}.sidebar-profile .sign-out{padding:7px}.app{display:flex;flex-direction:column}.profile-form .profile-name-row{grid-template-columns:1fr}.dashboard-page,.settings-page{padding:22px 14px}}
+        @media(max-width:760px){.app{width:100%;margin-left:0}.app-sidebar{position:sticky;inset:auto;width:100%;height:auto;padding:8px 10px;flex-direction:row;align-items:center;gap:8px}.sidebar-brand{border:0;padding:4px}.sidebar-brand img{width:30px;height:30px}.sidebar-brand span{display:none}.sidebar-nav{display:flex;gap:3px;overflow:auto}.sidebar-nav button{padding:8px;font-size:12px;white-space:nowrap}.sidebar-profile{margin:0 0 0 auto;padding:0;border:0}.sidebar-profile-summary span:last-child{display:none}.sidebar-profile .sign-out{padding:7px}.app{display:flex;flex-direction:column}.profile-form .profile-name-row{grid-template-columns:1fr}.dashboard-page,.settings-page{padding:22px 14px}body.sidebar-collapsed .app-sidebar{position:fixed;inset:0 auto 0 0;width:64px;height:100vh;padding:64px 7px 12px;flex-direction:column;align-items:stretch}body.sidebar-collapsed .app{width:calc(100% - 64px);margin-left:64px}body.sidebar-collapsed .sidebar-brand{border-bottom:1px solid #253247;padding:0 0 12px}body.sidebar-collapsed .sidebar-nav{display:grid}body.sidebar-collapsed .sidebar-nav button{font-size:0;padding:0}}
 </style>
 
 </head>
@@ -1348,7 +1361,7 @@
 <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-label="Open sidebar" title="Open sidebar" aria-expanded="false"><span></span><span></span><span></span></button>
 <aside class="app-sidebar" id="appSidebar">
   <div class="sidebar-brand"><img src="logo.png" alt=""><span>Di PseudoFlow<br>Logics</span></div>
-  <nav class="sidebar-nav" aria-label="Main navigation"><button id="navHome" class="active">🏠 Home</button><button id="navProjects">📁 Projects</button><button id="navSettings">⚙ Settings</button><button id="navProfile">👤 Profile</button><button type="button" id="headerHelpButton" aria-label="Help" title="Help">❔ Help</button></nav>
+  <nav class="sidebar-nav" aria-label="Main navigation"><button id="navHome" class="active" title="Home">🏠 Home</button><button id="navProjects" title="Projects">📁 Projects</button><button id="navSettings" title="Settings">⚙ Settings</button><button id="navProfile" title="Profile">👤 Profile</button><button type="button" id="headerHelpButton" aria-label="Help" title="Help">❔ Help</button></nav>
   <div class="sidebar-profile"><div class="sidebar-profile-summary"><span class="profile-avatar" id="sidebarAvatar">🙂</span><span><strong id="sidebarProfileName">Profile</strong><br><small id="sidebarProfileUsername"></small></span></div><button id="signOutButton" class="sign-out">Guest mode</button></div>
 </aside>
 
@@ -1591,7 +1604,7 @@
 
                         <div>
 
-                            <h2>
+                            <h2 id="editorTitle">
                                 Pseudocode
                             </h2>
 
@@ -1612,6 +1625,9 @@
                     </div>
 
                     <div class="editor-actions-top">
+                      <label for="languageModeSelect" class="visually-hidden">Code language</label>
+                      <select id="languageModeSelect" title="Choose automatic detection or a language"><option value="auto">Auto · Detect language</option><option value="pseudocode">Pseudocode</option><option value="python">Python</option></select>
+                      <span id="languageStatus" class="language-status" aria-live="polite">Auto · Pseudocode</span>
                       <button type="button" id="editorUndoButton" title="Undo (Ctrl+Z)">↶ Undo</button>
                       <button type="button" id="editorRedoButton" title="Redo (Ctrl+Y)">↷ Redo</button>
                       <label for="workspaceLayoutSelect" class="visually-hidden">Pseudocode and output layout</label>
@@ -1633,6 +1649,8 @@
                     </div>
 
                     <div class="code-area">
+
+                        <svg id="indentGuides" class="indent-guides" aria-hidden="true" focusable="false"></svg>
 
                         <pre
                             id="highlightLayer"
@@ -1662,7 +1680,7 @@
 
                     <button
                         class="btn btn-run"
-                        onclick="runProgram()"
+                        onclick="runDetectedProgram()"
                     >
                         ▶ Run
                     </button>
@@ -1671,7 +1689,7 @@
                         class="btn btn-secondary btn-pause-run"
                         id="pauseRunButton"
                         type="button"
-                        onclick="toggleExecutionPause()"
+                        onclick="toggleActivePause()"
                         disabled
                     >
                         ⏸ Pause Run
@@ -1681,7 +1699,7 @@
                         class="btn btn-danger"
                         id="stopRunButton"
                         type="button"
-                        onclick="stopProgram()"
+                        onclick="stopActiveProgram()"
                         disabled
                     >
                         ■ Stop
@@ -1689,7 +1707,8 @@
 
                     <button
                         class="btn btn-step"
-                        onclick="runStepByStep()"
+                        id="stepRunButton"
+                        onclick="runDetectedProgram(true)"
                     >
                         ▶ Step-by-Step
                     </button>
@@ -1782,6 +1801,11 @@
                     id="output"
                     class="output-console"
                 ></div>
+
+                <div id="pythonInputArea" class="input-section" style="display:none">
+                    <div class="input-title"><span class="input-icon">?</span><div><strong>Python Input</strong><p id="pythonInputInformation">Enter a value for input().</p></div></div>
+                    <div class="input-row"><input type="text" id="pythonUserInput" placeholder="Enter value" autocomplete="off"><button type="button" id="pythonInputSubmit">Enter</button></div>
+                </div>
 
                 <div
                     id="inputArea"
@@ -1957,6 +1981,8 @@
                     <option value="bottom">Align bottom</option>
                 </select>
                 <button type="button" class="flow-tool" id="flowAlignButton">Align</button>
+                <button type="button" class="flow-tool" id="flowEditConnectorLabelButton" title="Edit the selected arrow label">Edit Arrow Text</button>
+                <button type="button" class="flow-tool" id="flowTidyButton" title="Arrange shapes into a clear top-down layout">Tidy</button>
                 <button type="button" class="flow-tool" id="flowExportPngButton">Export PNG</button>
                 <button type="button" class="flow-tool" id="flowExportPdfButton">Export PDF</button>
                 <span class="flowchart-selection-count" id="flowSelectionCount">0 selected</span>
@@ -2059,17 +2085,17 @@
                 >
 
                     <div class="flow-text-editor-header" id="flowTextEditorHeader" title="Drag to move this editor">
-                        <strong>Edit Shape</strong>
+                        <strong id="flowTextEditorTitle">Edit Shape</strong>
                         <span>⋮⋮</span>
                     </div>
-                    <label for="flowTextInput">Shape Text</label>
+                    <label id="flowTextLabel" for="flowTextInput">Shape Text</label>
 
                     <textarea
                         id="flowTextInput"
                         placeholder="Enter text..."
                     ></textarea>
 
-                    <label>
+                    <label id="flowFontSizeLabel" for="flowFontSizeInput">
                         Text Size
                     </label>
 
@@ -2164,9 +2190,11 @@
     <div class="help-item"><span class="help-icon">➜</span><span><strong>Connect shapes</strong><small>Choose a line tool, then click two anchor dots.</small></span></div>
     <div class="help-item"><span class="help-icon">⇧ + click</span><span><strong>Select several</strong><small>Shift-click shapes to add or remove.</small></span></div>
     <div class="help-item"><span class="help-icon">Esc</span><span><strong>Exit or clear</strong><small>Leave multi-select or cancel the active tool.</small></span></div>
-    <div class="help-item"><span class="help-icon">Space + ↔</span><span><strong>Pan workspace</strong><small>Hold Space and drag the canvas.</small></span></div>
+    <div class="help-item"><span class="help-icon">2× ↔</span><span><strong>Pan workspace</strong><small>Double-click and hold the blank canvas, then drag; or hold Space and drag.</small></span></div>
     <div class="help-item"><span class="help-icon">⌕</span><span><strong>Zoom</strong><small>Scroll the mouse wheel over the canvas.</small></span></div>
     <div class="help-item"><span class="help-icon">✎</span><span><strong>Edit shape text</strong><small>Double-click a shape to edit its label and size.</small></span></div>
+    <div class="help-item"><span class="help-icon">↔</span><span><strong>Edit arrow text</strong><small>Select a connector, then choose Edit Arrow Text.</small></span></div>
+    <div class="help-item"><span class="help-icon">☷</span><span><strong>Tidy flowchart</strong><small>Use Tidy to arrange connected shapes into levels.</small></span></div>
     <div class="help-item"><span class="help-icon"><kbd>Ctrl</kbd><kbd>Z</kbd></span><span><strong>Undo</strong><small>Reverse your last change.</small></span></div>
     <div class="help-item"><span class="help-icon"><kbd>Ctrl</kbd><kbd>Y</kbd></span><span><strong>Redo</strong><small>Restore an undone change.</small></span></div>
     <div class="help-item"><span class="help-icon"><kbd>Ctrl</kbd><kbd>C</kbd></span><span><strong>Copy selection</strong><small>Copy selected flowchart shapes.</small></span></div>
@@ -2352,12 +2380,14 @@ let connectorSourceNode = null;
 let connectorSourceSide = null;
 
 let editingNodeId = null;
+let editingConnectorId = null;
 
 let flowZoom = 1;
 let flowPanX = 0;
 let flowPanY = 0;
 let spacePanHeld = false;
 let activePan = null;
+let lastFlowBackgroundPointerDownAt = 0;
 
 let flowGridEnabled = true;
 
@@ -2464,6 +2494,8 @@ function createNewProjectObject() {
                 "pseudocode"
             )?.value || "",
 
+        codeLanguage: "auto",
+
         workStamp: createWorkStamp(now + "-" + (currentProfile?.id || "local")),
         profileId: currentProfile?.id || null,
         ownerDisplayName: currentProfile?.displayName || "",
@@ -2496,6 +2528,7 @@ function syncProjectFieldsToState() {
     currentProject.title = projectTitle.value.trim();
     currentProject.question = projectQuestion.value.trim();
     currentProject.pseudocode = document.getElementById("pseudocode")?.value || "";
+    currentProject.codeLanguage = document.getElementById("languageModeSelect")?.value || "auto";
 }
 
 function resetProjectHistory() {
@@ -2556,6 +2589,9 @@ function updateProjectFieldsFromState({ resetHistory = true } = {}) {
 
     projectQuestion.value =
         currentProject.question || "";
+
+    const languageMode = document.getElementById("languageModeSelect");
+    if (languageMode) languageMode.value = ["auto", "pseudocode", "python"].includes(currentProject.codeLanguage) ? currentProject.codeLanguage : "auto";
 
 
     const pseudocode =
@@ -3453,57 +3489,20 @@ function wrapText(
     text,
     maxCharacters
 ) {
-
-    const words =
-        String(text || "")
-            .split(/\s+/);
-
-
     const lines = [];
-
-    let line = "";
-
-
-    for (
-        const word
-        of words
-    ) {
-
-        if (!line) {
-
-            line = word;
-
-            continue;
-        }
-
-
-        const candidate =
-            line +
-            " " +
-            word;
-
-
-        if (
-            candidate.length
-            <= maxCharacters
-        ) {
-
-            line =
-                candidate;
-
-        } else {
-
-            lines.push(line);
-
-            line = word;
-        }
-    }
-
-
-    if (line) {
-
+    String(text || "").split(/\r?\n/).forEach(explicitLine => {
+        const words = explicitLine.trim().split(/\s+/).filter(Boolean);
+        if (!words.length) { lines.push(""); return; }
+        let line = "";
+        words.forEach(word => {
+            const candidate = line ? line + " " + word : word;
+            if (line && candidate.length > maxCharacters) {
+                lines.push(line);
+                line = word;
+            } else line = candidate;
+        });
         lines.push(line);
-    }
+    });
 
 
     return lines.length
@@ -4223,25 +4222,48 @@ function getNodeAnchorPositions(node) {
 
     // Put anchors on each symbol's visible outline, not its rectangular bounds.
     if (node.type === "decision") {
-        return {
-            top: { x: middleX, y: top },
-            right: { x: right, y: middleY },
-            bottom: { x: middleX, y: bottom },
-            left: { x: left, y: middleY }
+        const vertices = [
+            { x: middleX, y: top }, { x: right, y: middleY },
+            { x: middleX, y: bottom }, { x: left, y: middleY }
+        ];
+        const anchors = {
+            top: vertices[0], right: vertices[1], bottom: vertices[2], left: vertices[3]
         };
+        const keys = [
+            ["top-right", "right-upper"], ["right-lower", "bottom-right"],
+            ["bottom-left", "left-lower"], ["left-upper", "top-left"]
+        ];
+        vertices.forEach((a, edge) => {
+            const b = vertices[(edge + 1) % vertices.length];
+            [1 / 3, 2 / 3].forEach((t, index) => {
+                const key = keys[edge][index];
+                anchors[key] = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+            });
+        });
+        return anchors;
     }
     if (node.type === "connection") {
         const radius = Math.max(8, Math.min(node.width, node.height) / 2);
-        const diagonal = radius / Math.sqrt(2);
+        const keys = ["top", "top-upper-right", "top-right", "right-upper", "right", "right-lower", "bottom-right", "bottom-lower-right", "bottom", "bottom-lower-left", "bottom-left", "left-lower", "left", "left-upper", "top-left", "top-upper-left"];
+        return Object.fromEntries(keys.map((key, index) => {
+            const angle = -Math.PI / 2 + index * (Math.PI * 2 / keys.length);
+            return [key, { x: middleX + Math.cos(angle) * radius, y: middleY + Math.sin(angle) * radius }];
+        }));
+    }
+    if (node.type === "start-end") {
+        const radius = Math.min(node.height / 2, node.width / 2);
+        const straightLeft = left + radius;
+        const straightRight = right - radius;
+        const arc = (centerX, angle) => ({ x: centerX + Math.cos(angle * Math.PI / 180) * radius, y: middleY + Math.sin(angle * Math.PI / 180) * radius });
         return {
-            top: { x: middleX, y: middleY - radius },
-            "top-right": { x: middleX + diagonal, y: middleY - diagonal },
-            right: { x: middleX + radius, y: middleY },
-            "bottom-right": { x: middleX + diagonal, y: middleY + diagonal },
-            bottom: { x: middleX, y: middleY + radius },
-            "bottom-left": { x: middleX - diagonal, y: middleY + diagonal },
-            left: { x: middleX - radius, y: middleY },
-            "top-left": { x: middleX - diagonal, y: middleY - diagonal }
+            top: { x: middleX, y: top }, "top-left": { x: straightLeft + (straightRight - straightLeft) / 3, y: top },
+            "top-right": { x: straightLeft + 2 * (straightRight - straightLeft) / 3, y: top },
+            "top-inner-left": { x: straightLeft + (straightRight - straightLeft) / 4, y: top }, "top-inner-right": { x: straightLeft + 3 * (straightRight - straightLeft) / 4, y: top },
+            "right-upper": arc(straightRight, -45), right: arc(straightRight, 0), "right-lower": arc(straightRight, 45),
+            bottom: { x: middleX, y: bottom }, "bottom-left": { x: straightLeft + (straightRight - straightLeft) / 3, y: bottom },
+            "bottom-right": { x: straightLeft + 2 * (straightRight - straightLeft) / 3, y: bottom },
+            "bottom-inner-left": { x: straightLeft + (straightRight - straightLeft) / 4, y: bottom }, "bottom-inner-right": { x: straightLeft + 3 * (straightRight - straightLeft) / 4, y: bottom },
+            "left-upper": arc(straightLeft, 225), left: arc(straightLeft, 180), "left-lower": arc(straightLeft, 135)
         };
     }
     if (node.type === "input-output") {
@@ -4252,25 +4274,25 @@ function getNodeAnchorPositions(node) {
         const bottomLeft = { x: left, y: bottom };
         const along = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
         return {
-            top: along(topLeft, topRight, 0.5),
-            "top-left": along(topLeft, topRight, 0.25),
-            "top-right": along(topLeft, topRight, 0.75),
-            right: along(topRight, bottomRight, 0.5),
-            "right-upper": along(topRight, bottomRight, 0.25),
-            "right-lower": along(topRight, bottomRight, 0.75),
-            bottom: along(bottomLeft, bottomRight, 0.5),
-            "bottom-left": along(bottomLeft, bottomRight, 0.25),
-            "bottom-right": along(bottomLeft, bottomRight, 0.75),
-            left: along(topLeft, bottomLeft, 0.5),
-            "left-upper": along(topLeft, bottomLeft, 0.25),
-            "left-lower": along(topLeft, bottomLeft, 0.75)
+            top: along(topLeft, topRight, 0.5), "top-left": along(topLeft, topRight, 0.25), "top-right": along(topLeft, topRight, 0.75),
+            "top-inner-left": along(topLeft, topRight, 1 / 3), "top-inner-right": along(topLeft, topRight, 2 / 3),
+            right: along(topRight, bottomRight, 0.5), "right-upper": along(topRight, bottomRight, 0.25), "right-lower": along(topRight, bottomRight, 0.75),
+            "right-inner-upper": along(topRight, bottomRight, 1 / 3), "right-inner-lower": along(topRight, bottomRight, 2 / 3),
+            bottom: along(bottomLeft, bottomRight, 0.5), "bottom-left": along(bottomLeft, bottomRight, 0.25), "bottom-right": along(bottomLeft, bottomRight, 0.75),
+            "bottom-inner-left": along(bottomLeft, bottomRight, 1 / 3), "bottom-inner-right": along(bottomLeft, bottomRight, 2 / 3),
+            left: along(topLeft, bottomLeft, 0.5), "left-upper": along(topLeft, bottomLeft, 0.25), "left-lower": along(topLeft, bottomLeft, 0.75),
+            "left-inner-upper": along(topLeft, bottomLeft, 1 / 3), "left-inner-lower": along(topLeft, bottomLeft, 2 / 3)
         };
     }
     return {
-        top: { x: middleX, y: top },
-        right: { x: right, y: middleY },
-        bottom: { x: middleX, y: bottom },
-        left: { x: left, y: middleY }
+        top: { x: middleX, y: top }, "top-left": { x: left + node.width / 4, y: top }, "top-right": { x: right - node.width / 4, y: top },
+        "top-inner-left": { x: left + node.width / 3, y: top }, "top-inner-right": { x: right - node.width / 3, y: top },
+        right: { x: right, y: middleY }, "right-upper": { x: right, y: top + node.height / 4 }, "right-lower": { x: right, y: bottom - node.height / 4 },
+        "right-inner-upper": { x: right, y: top + node.height / 3 }, "right-inner-lower": { x: right, y: bottom - node.height / 3 },
+        bottom: { x: middleX, y: bottom }, "bottom-left": { x: left + node.width / 4, y: bottom }, "bottom-right": { x: right - node.width / 4, y: bottom },
+        "bottom-inner-left": { x: left + node.width / 3, y: bottom }, "bottom-inner-right": { x: right - node.width / 3, y: bottom },
+        left: { x: left, y: middleY }, "left-upper": { x: left, y: top + node.height / 4 }, "left-lower": { x: left, y: bottom - node.height / 4 },
+        "left-inner-upper": { x: left, y: top + node.height / 3 }, "left-inner-lower": { x: left, y: bottom - node.height / 3 }
     };
 }
 
@@ -4332,6 +4354,8 @@ function renderFlowchart() {
     const selectionCount = selectedFlowNodes.size || (selectedFlowNode ? 1 : 0);
     const selectionCountElement = document.getElementById("flowSelectionCount");
     if (selectionCountElement) selectionCountElement.textContent = `${selectionCount} selected${selectionCount > 1 ? " — Shift-click to add/remove" : ""}`;
+    const editLabelButton = document.getElementById("flowEditConnectorLabelButton");
+    if (editLabelButton) editLabelButton.disabled = !selectedFlowConnector;
 
     updateFlowchartTransform();
 }
@@ -5250,6 +5274,12 @@ function openFlowTextEditor(
 
     editingNodeId =
         node.id;
+    editingConnectorId = null;
+    document.getElementById("flowTextEditorTitle").textContent = "Edit Shape";
+    document.getElementById("flowTextLabel").textContent = "Shape Text";
+    document.getElementById("flowFontSizeLabel").hidden = false;
+    flowFontSizeInput.hidden = false;
+    flowTextInput.placeholder = "Enter shape text...";
 
 
     flowTextInput.value =
@@ -5325,11 +5355,41 @@ function openFlowTextEditor(
     renderFlowTextEditorWire();
 }
 
+function openFlowConnectorLabelEditor(connector) {
+    if (!connector) return;
+    editingNodeId = null;
+    editingConnectorId = connector.id;
+    const title = document.getElementById("flowTextEditorTitle");
+    title.textContent = "Edit Arrow Text";
+    document.getElementById("flowTextLabel").textContent = "Arrow Label";
+    document.getElementById("flowFontSizeLabel").hidden = true;
+    flowFontSizeInput.hidden = true;
+    flowTextInput.placeholder = "For example: True or False";
+    flowTextInput.value = connector.label || "";
+    const from = getNodeById(connector.from);
+    const to = getNodeById(connector.to);
+    if (!from || !to) { editingConnectorId = null; return; }
+    const geometry = getConnectorGeometry(connector, from, to);
+    const wrapperRect = flowchartCanvasWrapper.getBoundingClientRect();
+    const canvasRect = flowchartCanvas.getBoundingClientRect();
+    const left = canvasRect.left + flowPanX + geometry.labelX * flowZoom - wrapperRect.left + 12;
+    const top = canvasRect.top + flowPanY + geometry.labelY * flowZoom - wrapperRect.top + 12;
+    flowTextEditor.style.left = Math.max(10, Math.min(wrapperRect.width - 280, left)) + "px";
+    flowTextEditor.style.top = Math.max(10, Math.min(wrapperRect.height - 170, top)) + "px";
+    flowTextEditor.classList.add("visible");
+    const wire = flowchartConnectors.querySelector(".flow-text-editor-wire");
+    if (wire) wire.remove();
+    flowTextEditor.getBoundingClientRect();
+    flowTextInput.focus({ preventScroll: true });
+    flowTextInput.select();
+}
+
 
 function closeFlowTextEditor() {
 
     editingNodeId =
         null;
+    editingConnectorId = null;
 
 
     flowTextEditor.classList.remove("visible");
@@ -5345,6 +5405,17 @@ document
     .addEventListener(
         "click",
         () => {
+
+            if (editingConnectorId) {
+                const connector = currentProject.flowchart.connectors.find(item => item.id === editingConnectorId);
+                if (connector) {
+                    connector.label = flowTextInput.value.trim();
+                    markProjectDirty();
+                    closeFlowTextEditor();
+                    renderFlowchart();
+                }
+                return;
+            }
 
             if (!editingNodeId) {
 
@@ -6029,10 +6100,17 @@ function renderFlowConnectors() {
 
                     label.setAttribute("x", geometry.labelX);
                     label.setAttribute("y", geometry.labelY);
+                    label.dataset.connectorId = connector.id;
 
 
                     label.textContent =
                         connector.label;
+
+                    label.addEventListener("dblclick", event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openFlowConnectorLabelEditor(connector);
+                    });
 
 
                     flowchartConnectors.appendChild(
@@ -6269,10 +6347,104 @@ function alignSelectedNodes(mode) {
     renderFlowchart();
 }
 
+function tidyFlowchart() {
+    const nodes = currentProject.flowchart.nodes;
+    if (nodes.length < 2) return;
+    const byId = new Map(nodes.map(node => [node.id, node]));
+    const outgoing = new Map(nodes.map(node => [node.id, []]));
+    const indegree = new Map(nodes.map(node => [node.id, 0]));
+    currentProject.flowchart.connectors.forEach(connector => {
+        if (!byId.has(connector.from) || !byId.has(connector.to)) return;
+        outgoing.get(connector.from).push(connector.to);
+        indegree.set(connector.to, indegree.get(connector.to) + 1);
+    });
+    const stableOrder = (a, b) => byId.get(a).y - byId.get(b).y || byId.get(a).x - byId.get(b).x;
+    const ready = nodes.filter(node => indegree.get(node.id) === 0).map(node => node.id).sort(stableOrder);
+    const depth = new Map(nodes.map(node => [node.id, 0]));
+    const visited = new Set();
+    while (ready.length) {
+        const id = ready.shift();
+        visited.add(id);
+        outgoing.get(id).forEach(nextId => {
+            depth.set(nextId, Math.max(depth.get(nextId), depth.get(id) + 1));
+            indegree.set(nextId, indegree.get(nextId) - 1);
+            if (indegree.get(nextId) === 0) {
+                ready.push(nextId);
+                ready.sort(stableOrder);
+            }
+        });
+    }
+    // Keep cycles and unconnected shapes visible after the directed layers.
+    let cycleLayer = Math.max(0, ...depth.values()) + 1;
+    nodes.filter(node => !visited.has(node.id)).sort((a, b) => a.y - b.y || a.x - b.x).forEach(node => depth.set(node.id, cycleLayer));
+    const groups = new Map();
+    nodes.forEach(node => {
+        const layer = depth.get(node.id) || 0;
+        if (!groups.has(layer)) groups.set(layer, []);
+        groups.get(layer).push(node);
+    });
+    groups.forEach(group => group.sort((a, b) => a.x - b.x || a.y - b.y));
+    const gapX = 72, gapY = 105, marginX = 72, marginY = 72;
+    const maxRowWidth = Math.max(600, Math.min(1200, (flowchartCanvasWrapper.clientWidth || 1000) - 120));
+    const rowsByLayer = new Map();
+    groups.forEach((group, layer) => {
+        const rows = [[]];
+        let rowWidth = 0;
+        group.forEach(node => {
+            const nextWidth = rowWidth + (rows[rows.length - 1].length ? gapX : 0) + node.width;
+            if (rows[rows.length - 1].length && nextWidth > maxRowWidth) {
+                rows.push([]);
+                rowWidth = 0;
+            }
+            const row = rows[rows.length - 1];
+            if (row.length) rowWidth += gapX;
+            row.push(node);
+            rowWidth += node.width;
+        });
+        rowsByLayer.set(layer, rows);
+    });
+    const widest = [...rowsByLayer.values()].reduce((max, rows) => Math.max(max, ...rows.map(row => row.reduce((sum, node) => sum + node.width, 0) + gapX * Math.max(0, row.length - 1))), 0);
+    let y = marginY;
+    [...rowsByLayer.keys()].sort((a, b) => a - b).forEach(layer => {
+        rowsByLayer.get(layer).forEach(row => {
+            const rowHeight = Math.max(...row.map(node => node.height));
+            const rowWidth = row.reduce((sum, node) => sum + node.width, 0) + gapX * Math.max(0, row.length - 1);
+            let x = marginX + (widest - rowWidth) / 2;
+            row.forEach(node => {
+                node.x = flowSnapEnabled ? snapToGrid(x) : x;
+                node.y = flowSnapEnabled ? snapToGrid(y + (rowHeight - node.height) / 2) : y + (rowHeight - node.height) / 2;
+                x += node.width + gapX;
+            });
+            y += rowHeight + gapY;
+        });
+    });
+    const minX = Math.min(...nodes.map(node => node.x));
+    const minY = Math.min(...nodes.map(node => node.y));
+    const maxX = Math.max(...nodes.map(node => node.x + node.width));
+    const maxY = Math.max(...nodes.map(node => node.y + node.height));
+    const viewWidth = Math.max(1, flowchartCanvasWrapper.clientWidth);
+    const viewHeight = Math.max(1, flowchartCanvasWrapper.clientHeight);
+    const contentWidth = Math.max(1, maxX - minX);
+    const contentHeight = Math.max(1, maxY - minY);
+    flowZoom = Math.max(0.4, Math.min(2, (viewWidth - 80) / contentWidth, (viewHeight - 80) / contentHeight));
+    flowPanX = (viewWidth - contentWidth * flowZoom) / 2 - minX * flowZoom;
+    flowPanY = (viewHeight - contentHeight * flowZoom) / 2 - minY * flowZoom;
+    selectedFlowNode = null;
+    selectedFlowNodes = new Set();
+    selectedFlowConnector = null;
+    renderFlowchart();
+    markProjectDirty();
+}
+
 document.getElementById("flowUndoButton").addEventListener("click", undoProjectChange);
 document.getElementById("flowRedoButton").addEventListener("click", redoProjectChange);
 document.getElementById("flowDuplicateButton").addEventListener("click", () => duplicateFlowSelection());
 document.getElementById("flowAlignButton").addEventListener("click", () => alignSelectedNodes(document.getElementById("flowAlignMode").value));
+document.getElementById("flowTidyButton").addEventListener("click", tidyFlowchart);
+document.getElementById("flowEditConnectorLabelButton").addEventListener("click", () => {
+    const connector = currentProject.flowchart.connectors.find(item => item.id === selectedFlowConnector);
+    if (connector) openFlowConnectorLabelEditor(connector);
+});
 
 
 /* =========================================================
@@ -6535,7 +6707,12 @@ flowchartCanvasWrapper.addEventListener("wheel", event => {
 }, { passive: false });
 
 flowchartCanvasWrapper.addEventListener("pointerdown", event => {
-    if (event.button !== 1 && !(spacePanHeld && event.button === 0)) return;
+    const onCanvasBackground = event.target === flowchartCanvasWrapper || event.target === flowchartCanvas || event.target === flowchartViewport;
+    const now = Date.now();
+    const rapidSecondBackgroundClick = event.button === 0 && onCanvasBackground && now - lastFlowBackgroundPointerDownAt < 420;
+    if (event.button === 0 && onCanvasBackground) lastFlowBackgroundPointerDownAt = now;
+    const doubleClickPan = event.button === 0 && onCanvasBackground && (event.detail >= 2 || rapidSecondBackgroundClick);
+    if (event.button !== 1 && !(spacePanHeld && event.button === 0) && !doubleClickPan) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     activePan = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, panX: flowPanX, panY: flowPanY };
@@ -7149,7 +7326,8 @@ function applyPreferences() {
     const points=document.getElementById("flowchartCanvas"); if(points) points.classList.toggle("hide-connection-points",p.showConnectionPoints===false);
     const marker=document.getElementById("flowArrow"); if(marker){marker.setAttribute("markerWidth",p.arrowStyle==="compact"?"7":"10");marker.setAttribute("markerHeight",p.arrowStyle==="compact"?"7":"10");}
     const editorFontSize=(Number(p.editorFontSize)||14)+"px";
-    ["pseudocode","highlightLayer","lineNumbers"].forEach(id=>{const layer=document.getElementById(id);if(layer)layer.style.fontSize=editorFontSize;});
+    const indentSize=String(Math.max(1,Math.min(8,Number(p.indentSize)||4)));
+    ["pseudocode","highlightLayer","lineNumbers"].forEach(id=>{const layer=document.getElementById(id);if(layer){layer.style.fontSize=editorFontSize;if(id!=="lineNumbers"){layer.style.tabSize=indentSize;layer.style.MozTabSize=indentSize;}}});
     if(typeof updateEditorVisuals==="function")updateEditorVisuals();
     const outputPanel=document.querySelector(".output-panel");if(outputPanel)outputPanel.hidden=p.showExecutionMessages===false;
     if(p.traceExecution===false&&typeof clearExecutionTracker==="function")clearExecutionTracker();
@@ -7301,6 +7479,126 @@ editorForHistory.addEventListener("keydown",event=>{
     else if(key==="y"){event.preventDefault();event.stopPropagation();redoPseudocode();}
 });
 resetPseudocodeHistory();
+
+// Language detection and bundled Python execution.
+const languageModeSelect = document.getElementById("languageModeSelect");
+const languageStatus = document.getElementById("languageStatus");
+const pythonInputArea = document.getElementById("pythonInputArea");
+const pythonUserInput = document.getElementById("pythonUserInput");
+let activePythonRunId = null;
+let pythonRunStopped = false;
+
+function detectProgrammingLanguage(source) {
+    const mode = languageModeSelect?.value || "auto";
+    if (mode !== "auto") return mode;
+    const text = String(source || "");
+    const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    if (!lines.length) return "pseudocode";
+    const pythonScore = lines.reduce((score, line) => score + (
+        /^(?:from\s+\w+\s+import\s|import\s+\w|def\s+\w+\s*\(|class\s+\w+\s*[:(]|async\s+def\s|elif\s+.+:|if\s+.+:|else\s*:|for\s+.+\s+in\s+.+:|while\s+.+:|try\s*:|except(?:\s+.+)?:|finally\s*:|with\s+.+:|print\s*\(|input\s*\(|#.*)$/.test(line) || /\b(?:True|False|None)\b/.test(line) || /\b(?:and|or|not)\b/.test(line) ? 1 : 0), 0);
+    const pseudoScore = lines.reduce((score, line) => score + (
+        /^(?:start\b|stop\b|declare\b|read\b|output\b|input\b|endif\b|endcase\b|endwhile\b|endfor\b|otherwise\b|case\s+of\b)/i.test(line) || /^(?:print|display)\s+(?!\()/.test(line) || /\bthen\s*$/i.test(line) ? 1 : 0), 0);
+    return pythonScore > pseudoScore ? "python" : "pseudocode";
+}
+
+function refreshCodeLanguageUI() {
+    const mode = languageModeSelect?.value || "auto";
+    const active = detectProgrammingLanguage(document.getElementById("pseudocode")?.value || "");
+    if (languageStatus) languageStatus.textContent = `${mode === "auto" ? "Auto · " : "Selected · "}${active === "python" ? "Python" : "Pseudocode"}`;
+    const title = document.getElementById("editorTitle");
+    if (title) title.textContent = active === "python" ? "Python" : "Pseudocode";
+    const python = active === "python";
+    const step = document.getElementById("stepRunButton");
+    const pause = document.getElementById("pauseRunButton");
+    if (step) { step.hidden = python; step.title = python ? "Step-by-step execution is available for pseudocode." : "Run one pseudocode step at a time"; }
+    if (pause) pause.hidden = python;
+    document.querySelectorAll(".btn-check, .btn-format").forEach(button => { button.hidden = python; });
+    const example = Array.from(document.querySelectorAll(".button-row button")).find(button => button.textContent.includes("Load Example"));
+    if (example) example.hidden = python;
+    return active;
+}
+window.getActiveCodeLanguage = () => detectProgrammingLanguage(document.getElementById("pseudocode")?.value || "");
+window.refreshCodeLanguageUI = refreshCodeLanguageUI;
+languageModeSelect?.addEventListener("change", () => { syncProjectFieldsToState(); refreshCodeLanguageUI(); updateEditorVisuals(); markProjectDirty(); });
+document.getElementById("pseudocode")?.addEventListener("input", refreshCodeLanguageUI);
+refreshCodeLanguageUI();
+
+function runDetectedProgram(stepByStep = false) {
+    const language = detectProgrammingLanguage(document.getElementById("pseudocode")?.value || "");
+    if (language !== "python") {
+        pythonInputArea.style.display = "none";
+        activePythonRunId = null;
+        if (stepByStep) runStepByStep(); else runProgram();
+        return;
+    }
+    if (stepByStep) return;
+    if (window.dpfPreferences?.clearOutputBeforeRun !== false) clearOutput();
+    document.getElementById("inputArea").style.display = "none";
+    pythonInputArea.style.display = "none";
+    pythonRunStopped = false;
+    activePythonRunId = window.crypto.randomUUID();
+    const requestedRunId = activePythonRunId;
+    setEditorStatus("Starting Python…");
+    const stop = document.getElementById("stopRunButton");
+    if (stop) stop.disabled = false;
+    window.diPseudoFlow.runPythonCode(document.getElementById("pseudocode").value, requestedRunId).then(result => {
+        if (!result?.success) {
+            if (activePythonRunId !== requestedRunId) return;
+            activePythonRunId = null;
+            setEditorStatus("Python could not start");
+            printOutput(`Python error: ${result?.error || "Could not start Python."}`);
+            if (stop) stop.disabled = true;
+            return;
+        }
+        if (activePythonRunId !== requestedRunId) { window.diPseudoFlow.stopPython(requestedRunId); return; }
+        setEditorStatus(`Running Python ${result.pythonVersion || ""}`.trim());
+    }).catch(error => { if (activePythonRunId !== requestedRunId) return; activePythonRunId = null; setEditorStatus("Python could not start"); printOutput(`Python error: ${error.message || error}`); if (stop) stop.disabled = true; });
+}
+
+function toggleActivePause() { if (detectProgrammingLanguage(document.getElementById("pseudocode").value) !== "python") toggleExecutionPause(); }
+function stopActiveProgram() {
+    if (activePythonRunId) { pythonRunStopped = true; window.diPseudoFlow.stopPython(activePythonRunId); setEditorStatus("Stopping Python…"); return; }
+    stopProgram();
+}
+
+window.diPseudoFlow.onPythonOutput(payload => {
+    if (!payload || payload.runId !== activePythonRunId) return;
+    const output = document.getElementById("output");
+    output.textContent += payload.text || "";
+    output.scrollTop = output.scrollHeight;
+});
+window.diPseudoFlow.onPythonInputRequest(payload => {
+    if (!payload || payload.runId !== activePythonRunId) return;
+    pythonInputArea.style.display = "block";
+    document.getElementById("pythonInputInformation").textContent = "Enter a value for input().";
+    pythonUserInput.value = "";
+    pythonUserInput.focus();
+    setEditorStatus("Python is waiting for input");
+});
+window.diPseudoFlow.onPythonExit(payload => {
+    if (!payload || payload.runId !== activePythonRunId) return;
+    activePythonRunId = null;
+    pythonInputArea.style.display = "none";
+    const stop = document.getElementById("stopRunButton");
+    if (stop) stop.disabled = true;
+    if (pythonRunStopped) { setEditorStatus("Stopped"); printOutput("\nPython run stopped."); }
+    else if (payload.error) { setEditorStatus("Python process error"); printOutput(`\nPython process error: ${payload.error}`); }
+    else if (payload.code === 0) { setEditorStatus("Python finished"); printOutput("\nProgram finished."); }
+    else { setEditorStatus("Python finished with errors"); printOutput(`\nPython exited with code ${payload.code}.`); }
+});
+function submitPythonInput() {
+    if (!activePythonRunId) return;
+    const value = pythonUserInput.value;
+    const output = document.getElementById("output");
+    output.textContent += `${value}\n`;
+    output.scrollTop = output.scrollHeight;
+    window.diPseudoFlow.sendPythonInput(activePythonRunId, value).then(result => {
+        if (!result?.success) document.getElementById("pythonInputInformation").textContent = result?.error || "Could not send input.";
+        else { pythonInputArea.style.display = "none"; setEditorStatus("Running Python"); }
+    });
+}
+document.getElementById("pythonInputSubmit").addEventListener("click", submitPythonInput);
+pythonUserInput.addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); submitPythonInput(); } });
 const editorWorkspaceGrid=document.querySelector("#editorWorkspace .workspace");
 const outputPanelElement=document.querySelector(".output-panel");
 const layoutSelect=document.getElementById("workspaceLayoutSelect");
@@ -7316,7 +7614,7 @@ function setFocusMode(enabled){document.getElementById("appRoot").classList.togg
 focusButton.addEventListener("click",()=>setFocusMode(true));
 window.addEventListener("keydown",event=>{if(event.key==="Escape"&&document.body.classList.contains("focus-active"))setFocusMode(false);});
 const sidebarToggle=document.getElementById("sidebarToggle");
-function setSidebarCollapsed(collapsed){document.body.classList.toggle("sidebar-collapsed",collapsed);sidebarToggle.setAttribute("aria-expanded",String(!collapsed));sidebarToggle.setAttribute("aria-label",collapsed?"Open sidebar":"Close sidebar");sidebarToggle.title=collapsed?"Open sidebar":"Close sidebar";localStorage.setItem("dpf-sidebar-collapsed",String(collapsed));}
+function setSidebarCollapsed(collapsed){document.body.classList.toggle("sidebar-collapsed",collapsed);sidebarToggle.setAttribute("aria-expanded",String(!collapsed));sidebarToggle.setAttribute("aria-label",collapsed?"Expand sidebar":"Collapse sidebar");sidebarToggle.title=collapsed?"Expand sidebar":"Collapse sidebar";localStorage.setItem("dpf-sidebar-collapsed",String(collapsed));}
 setSidebarCollapsed(localStorage.getItem("dpf-sidebar-collapsed")==="false"?false:true);
 sidebarToggle.addEventListener("click",()=>setSidebarCollapsed(!document.body.classList.contains("sidebar-collapsed")));
 document.getElementById("chooseProjectsFolder").addEventListener("click",async()=>{const result=await window.diPseudoFlow.chooseProjectsFolder();if(result?.success){document.getElementById("projectsFolderPath").textContent=result.directory;await refreshDashboardRecentProjects();}else if(!result?.canceled)alert(result?.error||"Could not select the project folder.");});

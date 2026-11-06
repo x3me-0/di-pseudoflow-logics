@@ -145,6 +145,139 @@ function setEditorStatus(status) {
    LINE NUMBERS
 ========================================================= */
 
+const indentGuideMeasureCanvas = document.createElement("canvas");
+const indentGuideMeasureContext = indentGuideMeasureCanvas.getContext("2d");
+
+function renderIndentGuides() {
+    const svg = document.getElementById("indentGuides");
+    const editor = document.getElementById("pseudocode");
+    if (!svg || !editor) return;
+
+    const styles = getComputedStyle(editor);
+    const lineHeight = Number.parseFloat(styles.lineHeight) || 22;
+    const fontSize = Number.parseFloat(styles.fontSize) || 14;
+    const fontFamily = styles.fontFamily || "monospace";
+    const metrics = indentGuideMeasureContext;
+    if (!metrics) return;
+    metrics.font = `${styles.fontWeight || "400"} ${fontSize}px ${fontFamily}`;
+    const charWidth = metrics.measureText("0").width || fontSize * 0.6;
+    const indentWidth = Math.max(1, Math.min(8, Number(window.dpfPreferences?.indentSize) || 4));
+    const lines = editor.value.split("\n");
+    const offsets = [];
+    let documentOffset = 0;
+    lines.forEach(line => { offsets.push(documentOffset); documentOffset += line.length + 1; });
+    const caret = editor.selectionStart;
+    let caretLine = 0;
+    for (let index = 0; index < caret; index += 1) if (editor.value[index] === "\n") caretLine += 1;
+    const indentSegments = [];
+    const indentStack = [];
+    let previousIndent = 0;
+    let previousLine = -1;
+
+    function visualIndent(line) {
+        let columns = 0;
+        for (const char of line) {
+            if (char === " ") columns += 1;
+            else if (char === "\t") columns += indentWidth - (columns % indentWidth);
+            else break;
+        }
+        return columns;
+    }
+
+    function visualColumn(line, stop) {
+        let columns = 0;
+        for (let index = 0; index < stop; index += 1) {
+            columns += line[index] === "\t" ? indentWidth - (columns % indentWidth) : 1;
+        }
+        return columns;
+    }
+
+    lines.forEach((line, index) => {
+        if (!line.trim()) return;
+        const indent = visualIndent(line);
+        while (indentStack.length && indent < indentStack[indentStack.length - 1].level) {
+            const block = indentStack.pop();
+            indentSegments.push({ column: block.level, startLine: block.startLine, endLine: index, active: caretLine >= block.startLine && caretLine <= index });
+        }
+        const knownLevel = indentStack.length ? indentStack[indentStack.length - 1].level : previousIndent;
+        if (indent > knownLevel) {
+            for (let level = knownLevel + indentWidth; level <= indent; level += indentWidth) {
+                indentStack.push({ level, startLine: index });
+            }
+        }
+        previousIndent = indent;
+        previousLine = index;
+    });
+    while (indentStack.length) {
+        const block = indentStack.pop();
+        indentSegments.push({ column: block.level, startLine: block.startLine, endLine: Math.max(block.startLine + 1, previousLine + 1), active: caretLine >= block.startLine && caretLine <= previousLine + 1 });
+    }
+
+    const bracketSegments = [];
+    const bracketStack = [];
+    const openToClose = { "{": "}", "[": "]", "(": ")" };
+    const closeToOpen = { "}": "{", "]": "[", ")": "(" };
+    lines.forEach((line, lineIndex) => {
+        let quote = "";
+        let escaped = false;
+        for (let column = 0; column < line.length; column += 1) {
+            const char = line[column];
+            const next = line[column + 1];
+            if (quote) {
+                if (escaped) escaped = false;
+                else if (char === "\\") escaped = true;
+                else if (char === quote) quote = "";
+                continue;
+            }
+            if (char === "'" || char === '"') { quote = char; continue; }
+            if ((char === "/" && next === "/") || char === "#") break;
+            if (openToClose[char]) {
+                bracketStack.push({ char, line: lineIndex, column, offset: offsets[lineIndex] + column });
+            } else if (closeToOpen[char] && bracketStack.length && bracketStack[bracketStack.length - 1].char === closeToOpen[char]) {
+                const open = bracketStack.pop();
+                if (lineIndex > open.line) {
+                    const endOffset = offsets[lineIndex] + column;
+                    bracketSegments.push({ column: visualColumn(lines[open.line], open.column) + 1, startLine: open.line, endLine: lineIndex, active: caret >= open.offset && caret <= endOffset });
+                }
+            }
+        }
+    });
+
+    const width = Math.max(1, svg.clientWidth || editor.clientWidth);
+    const height = Math.max(1, svg.clientHeight || editor.clientHeight);
+    svg.setAttribute("width", width);
+    svg.setAttribute("height", height);
+    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    svg.replaceChildren();
+    const isLight = document.body.dataset.theme === "light";
+    const inactive = isLight ? "#64748b" : "#94a3b8";
+    const active = getComputedStyle(document.documentElement).getPropertyValue("--accent-color").trim() || (isLight ? "#4f46e5" : "#a5b4fc");
+    const seen = new Set();
+    [...indentSegments, ...bracketSegments].forEach(segment => {
+        if (segment.endLine <= segment.startLine) return;
+        const x = 18 + segment.column * charWidth - editor.scrollLeft;
+        const y1 = 16 + segment.startLine * lineHeight - editor.scrollTop;
+        const y2 = 16 + (segment.endLine + 1) * lineHeight - editor.scrollTop;
+        if (x < -2 || x > width + 2 || y2 < 0 || y1 > height) return;
+        const key = `${Math.round(x * 10)}:${Math.round(y1)}:${Math.round(y2)}`;
+        const isActive = segment.active;
+        const existing = seen.get(key);
+        if (existing) {
+            if (isActive) { existing.setAttribute("stroke", active); existing.setAttribute("stroke-width", "1.8"); existing.setAttribute("stroke-opacity", "0.9"); }
+            return;
+        }
+        const guide = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        guide.setAttribute("x1", x); guide.setAttribute("x2", x);
+        guide.setAttribute("y1", y1); guide.setAttribute("y2", y2);
+        guide.setAttribute("stroke", isActive ? active : inactive);
+        guide.setAttribute("stroke-width", isActive ? "1.8" : "0.8");
+        guide.setAttribute("stroke-opacity", isActive ? "0.9" : "0.24");
+        guide.setAttribute("vector-effect", "non-scaling-stroke");
+        svg.appendChild(guide);
+        seen.set(key, guide);
+    });
+}
+
 function updateLineNumbers() {
 
     const editor =
@@ -244,6 +377,9 @@ const highlightTypes = new Set([
     "string",
     "constant"
 ]);
+
+const pythonHighlightKeywords = new Set("False None True and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield".split(" "));
+const pythonHighlightBuiltins = new Set("abs all any ascii bin bool breakpoint bytearray bytes callable chr classmethod compile complex delattr dict dir divmod enumerate eval filter float format frozenset getattr hasattr hash help hex id input int isinstance issubclass iter len list locals map max memoryview min next object oct open ord pow print property range repr reversed round set setattr slice sorted staticmethod str sum super tuple type vars zip".split(" "));
 
 
 function highlightCodeLine(line, activeIdentifier = null) {
@@ -479,6 +615,33 @@ function highlightCodeLine(line, activeIdentifier = null) {
     return result;
 }
 
+function highlightPythonLine(line, activeIdentifier = null) {
+    const tokenPattern = /(#.*$|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b\d+(?:\.\d+)?\b|\b[A-Za-z_]\w*\b|==|!=|<=|>=|\+=|-=|\*=|\/=|\*\*|\/\/|[-+*/%=<>!&|^~]+)/g;
+    let result = "";
+    let cursor = 0;
+    let match;
+    while ((match = tokenPattern.exec(line))) {
+        result += escapeHtml(line.slice(cursor, match.index));
+        const token = match[0];
+        let tokenClass = "";
+        if (token.startsWith("#")) tokenClass = "hl-comment";
+        else if (token.startsWith("\"") || token.startsWith("'")) tokenClass = "hl-string";
+        else if (/^\d/.test(token)) tokenClass = "hl-number";
+        else if (pythonHighlightKeywords.has(token)) tokenClass = "hl-keyword";
+        else if (pythonHighlightBuiltins.has(token)) tokenClass = "hl-builtin";
+        else if (/^(?:==|!=|<=|>=|\+=|-=|\*=|\/=|\*\*|\/\/|[-+*/%=<>!&|^~]+)$/.test(token)) tokenClass = "hl-operator";
+        else tokenClass = "hl-identifier";
+        const tokenMarkup = tokenClass ? `<span class="${tokenClass}">${escapeHtml(token)}</span>` : escapeHtml(token);
+        result += activeIdentifier && /^[A-Za-z_]\w*$/.test(token) && token.toLowerCase() === activeIdentifier.toLowerCase()
+            ? `<span class="hl-variable-match">${tokenMarkup}</span>`
+            : tokenMarkup;
+        cursor = tokenPattern.lastIndex;
+        if (token.startsWith("#")) break;
+    }
+    result += escapeHtml(line.slice(cursor));
+    return result;
+}
+
 
 function getDeclaredVariableNames(source) {
     const names = new Set();
@@ -517,7 +680,8 @@ function getIdentifierAtCaret(editorElement) {
     }
     if (!range) return null;
     const lower = range.word.toLowerCase();
-    if (highlightKeywords.has(lower) || highlightTypes.has(lower)) return null;
+    const isPython = window.getActiveCodeLanguage?.() === "python";
+    if (highlightKeywords.has(lower) || highlightTypes.has(lower) || (isPython && pythonHighlightKeywords.has(range.word))) return null;
     return range;
 }
 
@@ -540,8 +704,9 @@ function updateHighlight() {
     selectedIdentifierName = getIdentifierAtCaret(editor)?.word || null;
 
 
+    const isPython = window.getActiveCodeLanguage?.() === "python";
     highlight.innerHTML = lines.map((line, index) => {
-        const content = highlightCodeLine(line, selectedIdentifierName) || " ";
+        const content = (isPython ? highlightPythonLine(line, selectedIdentifierName) : highlightCodeLine(line, selectedIdentifierName)) || " ";
         return index + 1 === executingLineNumber
             ? `<span class="execution-current-line">${content}</span>`
             : content;
@@ -588,6 +753,8 @@ function updateEditorVisuals() {
     updateHighlight();
 
     syncEditorScroll();
+    renderIndentGuides();
+    window.refreshCodeLanguageUI?.();
     const prefs = window.dpfPreferences || {};
     const lineNumbers = document.getElementById("lineNumbers");
     const highlight = document.getElementById("highlightLayer");
@@ -4909,6 +5076,7 @@ editor.addEventListener(
     function () {
 
         syncEditorScroll();
+        renderIndentGuides();
     }
 );
 
@@ -5175,6 +5343,13 @@ document.getElementById(
 ========================================================= */
 
 updateEditorVisuals();
+
+window.addEventListener("resize", renderIndentGuides);
+if (window.ResizeObserver) {
+    const indentGuidesResizeObserver = new ResizeObserver(renderIndentGuides);
+    const codeAreaForGuides = document.querySelector(".code-area");
+    if (codeAreaForGuides) indentGuidesResizeObserver.observe(codeAreaForGuides);
+}
 
 setEditorStatus(
     "Ready"

@@ -12,6 +12,26 @@ contextBridge.exposeInMainWorld("diPseudoFlow", {
     },
     exportPdf: (svg, title) => ipcRenderer.invoke("export:pdf", { svg, title }),
 
+    // Bundled CPython execution and its interactive console
+    runPythonCode: (code, runId) => ipcRenderer.invoke("python:run", { code: String(code || ""), runId: String(runId || "") }),
+    sendPythonInput: (runId, value) => ipcRenderer.invoke("python:input", { runId, value: String(value ?? "") }),
+    stopPython: (runId) => ipcRenderer.invoke("python:stop", String(runId || "")),
+    onPythonOutput: (callback) => {
+        const listener = (_event, payload) => callback(payload);
+        ipcRenderer.on("python:output", listener);
+        return () => ipcRenderer.removeListener("python:output", listener);
+    },
+    onPythonInputRequest: (callback) => {
+        const listener = (_event, payload) => callback(payload);
+        ipcRenderer.on("python:input-request", listener);
+        return () => ipcRenderer.removeListener("python:input-request", listener);
+    },
+    onPythonExit: (callback) => {
+        const listener = (_event, payload) => callback(payload);
+        ipcRenderer.on("python:exit", listener);
+        return () => ipcRenderer.removeListener("python:exit", listener);
+    },
+
     // Local profile accounts (passwords are hashed in the main process)
     listProfiles: () => ipcRenderer.invoke("profile:list"),
     createProfile: (profile) => ipcRenderer.invoke("profile:create", profile),

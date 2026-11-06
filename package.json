@@ -7,12 +7,7 @@
     "start": "electron .",
     "build": "electron-builder --win"
   },
-  "keywords": [
-    "pseudocode",
-    "flowchart",
-    "education",
-    "programming"
-  ],
+  "keywords": ["pseudocode", "flowchart", "education", "programming"],
   "author": "Horace Williams",
   "license": "ISC",
   "type": "commonjs",
@@ -26,30 +21,13 @@
   "build": {
     "appId": "com.dipseudoflow.logics",
     "productName": "Di PseudoFlow Logics",
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "index.html",
-      "style.css",
-      "interpreter.js",
-      "main.js",
-      "preload.js",
-      "icon.ico",
-      "logo.png"
+    "directories": { "output": "dist" },
+    "files": ["index.html", "style.css", "interpreter.js", "main.js", "preload.js", "icon.ico", "logo.png"],
+    "extraResources": [
+      { "from": "python", "to": "python", "filter": ["**/*"] }
     ],
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "x3me-0",
-        "repo": "di-pseudoflow-logics"
-      }
-    ],
-    "win": {
-      "target": "nsis",
-      "icon": "icon.ico",
-      "signAndEditExecutable": false
-    },
+    "publish": [{ "provider": "github", "owner": "x3me-0", "repo": "di-pseudoflow-logics" }],
+    "win": { "target": "nsis", "icon": "icon.ico", "signAndEditExecutable": false },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
