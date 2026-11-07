@@ -38,15 +38,6 @@
       "icon.ico",
       "logo.png"
     ],
-    "extraResources": [
-      {
-        "from": "python",
-        "to": "python",
-        "filter": [
-          "**/*"
-        ]
-      }
-    ],
     "publish": [
       {
         "provider": "github",

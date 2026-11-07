@@ -388,9 +388,6 @@ const highlightTypes = new Set([
     "constant"
 ]);
 
-const pythonHighlightKeywords = new Set("False None True and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield".split(" "));
-const pythonHighlightBuiltins = new Set("abs all any ascii bin bool breakpoint bytearray bytes callable chr classmethod compile complex delattr dict dir divmod enumerate eval filter float format frozenset getattr hasattr hash help hex id input int isinstance issubclass iter len list locals map max memoryview min next object oct open ord pow print property range repr reversed round set setattr slice sorted staticmethod str sum super tuple type vars zip".split(" "));
-
 
 function highlightCodeLine(line, activeIdentifier = null) {
 
@@ -625,34 +622,6 @@ function highlightCodeLine(line, activeIdentifier = null) {
     return result;
 }
 
-function highlightPythonLine(line, activeIdentifier = null) {
-    const tokenPattern = /(#.*$|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b\d+(?:\.\d+)?\b|\b[A-Za-z_]\w*\b|==|!=|<=|>=|\+=|-=|\*=|\/=|\*\*|\/\/|[-+*/%=<>!&|^~]+)/g;
-    let result = "";
-    let cursor = 0;
-    let match;
-    while ((match = tokenPattern.exec(line))) {
-        result += escapeHtml(line.slice(cursor, match.index));
-        const token = match[0];
-        let tokenClass = "";
-        if (token.startsWith("#")) tokenClass = "hl-comment";
-        else if (token.startsWith("\"") || token.startsWith("'")) tokenClass = "hl-string";
-        else if (/^\d/.test(token)) tokenClass = "hl-number";
-        else if (pythonHighlightKeywords.has(token)) tokenClass = "hl-keyword";
-        else if (pythonHighlightBuiltins.has(token)) tokenClass = "hl-builtin";
-        else if (/^(?:==|!=|<=|>=|\+=|-=|\*=|\/=|\*\*|\/\/|[-+*/%=<>!&|^~]+)$/.test(token)) tokenClass = "hl-operator";
-        else tokenClass = "hl-identifier";
-        const tokenMarkup = tokenClass ? `<span class="${tokenClass}">${escapeHtml(token)}</span>` : escapeHtml(token);
-        result += activeIdentifier && /^[A-Za-z_]\w*$/.test(token) && token.toLowerCase() === activeIdentifier.toLowerCase()
-            ? `<span class="hl-variable-match">${tokenMarkup}</span>`
-            : tokenMarkup;
-        cursor = tokenPattern.lastIndex;
-        if (token.startsWith("#")) break;
-    }
-    result += escapeHtml(line.slice(cursor));
-    return result;
-}
-
-
 function getDeclaredVariableNames(source) {
     const names = new Set();
     const declarationPattern = /^\s*([A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*)\s+as\s+(?:boolean|character|float|integer|real|string|constant)\b/gim;
@@ -690,8 +659,7 @@ function getIdentifierAtCaret(editorElement) {
     }
     if (!range) return null;
     const lower = range.word.toLowerCase();
-    const isPython = window.getActiveCodeLanguage?.() === "python";
-    if (highlightKeywords.has(lower) || highlightTypes.has(lower) || (isPython && pythonHighlightKeywords.has(range.word))) return null;
+    if (highlightKeywords.has(lower) || highlightTypes.has(lower)) return null;
     return range;
 }
 
@@ -714,9 +682,8 @@ function updateHighlight() {
     selectedIdentifierName = getIdentifierAtCaret(editor)?.word || null;
 
 
-    const isPython = window.getActiveCodeLanguage?.() === "python";
     highlight.innerHTML = lines.map((line, index) => {
-        const content = (isPython ? highlightPythonLine(line, selectedIdentifierName) : highlightCodeLine(line, selectedIdentifierName)) || " ";
+        const content = highlightCodeLine(line, selectedIdentifierName) || " ";
         return index + 1 === executingLineNumber
             ? `<span class="execution-current-line">${content}</span>`
             : content;
@@ -764,7 +731,6 @@ function updateEditorVisuals() {
 
     syncEditorScroll();
     renderIndentGuides();
-    window.refreshCodeLanguageUI?.();
     const prefs = window.dpfPreferences || {};
     const lineNumbers = document.getElementById("lineNumbers");
     const highlight = document.getElementById("highlightLayer");

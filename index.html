@@ -1096,17 +1096,29 @@
         .header-icon-button { width:40px;height:40px;padding:0;text-align:center;font-size:19px; }
         .dashboard-page,.settings-page { display:none; padding:28px clamp(18px,4vw,58px) 48px; min-height:65vh; }
         /* The title and navigation already appear in the sidebar. */
-        .app-header { display:none !important; }
+        .app-header { display:flex !important; align-items:center; justify-content:space-between; gap:14px; padding:12px 18px; min-height:58px; }
+        .app-header h1 { font-size:18px; margin:0 0 2px; }
+        .app-header p { font-size:11px; }
         .project-workspace-bar { padding:10px 13px; margin-bottom:10px; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"details-header actions" "details-fields actions" "status status"; gap:9px 14px; }
         .project-details-header { justify-content:flex-start; }
         .project-details-summary { display:none; color:#94a3b8; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .project-workspace-bar.collapsed { grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"details-header actions" "status status"; padding:8px 13px; }
         .project-workspace-bar.collapsed .project-details-summary { display:inline; }
         .project-fields-stack { grid-template-columns:minmax(180px,.75fr) minmax(280px,1.25fr); align-items:start; }
+        .project-workspace-bar { grid-template-areas:"details-header actions" "details-fields details-fields" "status status"; }
+        .project-fields-stack { width:100%; }
+        .execution-toolbar-row { margin:0 14px 12px; border:1px solid #263247; border-radius:10px; overflow:hidden; background:#111827; }
+        .execution-toolbar-row .button-row { padding:10px 12px; gap:8px; }
+        .execution-toolbar-row .editor-help { display:flex; gap:14px; padding:0 12px 9px; color:#8493aa; font-size:11px; }
+        .execution-toolbar-row kbd { padding:2px 5px; border:1px solid #39465a; border-radius:4px; color:#b6c3d7; }
+        .workspace { padding:4px 14px 10px; min-height:clamp(520px,calc(100vh - 320px),760px); }
+        .workspace .editor-panel,.workspace .output-panel { height:clamp(520px,calc(100vh - 320px),760px); }
+        .project-details-header strong { font-size:16px; }
+        .project-details-header .project-action { padding:7px 10px; }
         .project-workspace-bar .project-actions { max-width:520px; }
         .workspace-tabs { margin-bottom:10px; }
         .workspace { padding:12px 14px 20px; grid-template-columns:minmax(0,1.55fr) minmax(340px,.9fr); gap:14px; }
-        @media(max-width:850px) { .project-fields-stack { grid-template-columns:1fr; } }
+        @media(max-width:850px) { .project-fields-stack { grid-template-columns:1fr; } .execution-toolbar-row .button-row { flex-wrap:wrap; } .app-header { padding-left:14px; } }
         /* Welcome is temporarily disabled; guest/profile startup now opens Home directly. */
         #welcomeScreen { display:none !important; }
         /* Keep the pseudocode and result panes bounded; long content scrolls inside each pane. */
@@ -1262,6 +1274,8 @@
             .editor-actions-top { max-width:calc(100vw - 100px); }
             .workspace:not(.layout-stacked) { grid-template-columns:minmax(0,1fr); }
         }
+        @media(max-width:1000px) { .workspace { grid-template-columns:1fr; min-height:0; } .workspace .editor-panel,.workspace .output-panel { height:560px; } }
+        @media(max-width:760px) { .app-header { display:none !important; } .project-workspace-bar { grid-template-columns:1fr; grid-template-areas:"details-header" "details-fields" "actions" "status"; } .project-workspace-bar.collapsed { grid-template-areas:"details-header" "actions" "status"; } .project-workspace-bar .project-actions { max-width:none; } .execution-toolbar-row { margin:0 10px 10px; } }
 </style>
 
 </head>
@@ -1656,9 +1670,6 @@
                     </div>
 
                     <div class="editor-actions-top">
-                      <label for="languageModeSelect" class="visually-hidden">Code language</label>
-                      <select id="languageModeSelect" title="Choose automatic detection or a language"><option value="auto">Auto · Detect language</option><option value="pseudocode">Pseudocode</option><option value="python">Python</option></select>
-                      <span id="languageStatus" class="language-status" aria-live="polite">Auto · Pseudocode</span>
                       <button type="button" id="editorUndoButton" title="Undo (Ctrl+Z)">↶ Undo</button>
                       <button type="button" id="editorRedoButton" title="Redo (Ctrl+Y)">↷ Redo</button>
                       <label for="workspaceLayoutSelect" class="visually-hidden">Pseudocode and output layout</label>
@@ -1707,90 +1718,6 @@
 
                 </div>
 
-                <div class="button-row">
-
-                    <button
-                        class="btn btn-run"
-                        onclick="runDetectedProgram()"
-                    >
-                        ▶ Run
-                    </button>
-
-                    <button
-                        class="btn btn-secondary btn-pause-run"
-                        id="pauseRunButton"
-                        type="button"
-                        onclick="toggleActivePause()"
-                        disabled
-                    >
-                        ⏸ Pause Run
-                    </button>
-
-                    <button
-                        class="btn btn-danger"
-                        id="stopRunButton"
-                        type="button"
-                        onclick="stopActiveProgram()"
-                        disabled
-                    >
-                        ■ Stop
-                    </button>
-
-                    <button
-                        class="btn btn-step"
-                        id="stepRunButton"
-                        onclick="runDetectedProgram(true)"
-                    >
-                        ▶ Step-by-Step
-                    </button>
-
-                    <button
-                        class="btn btn-check"
-                        onclick="checkSyntax()"
-                    >
-                        ✓ Check Syntax
-                    </button>
-
-                    <button
-                        class="btn btn-format"
-                        onclick="formatPseudocode()"
-                    >
-                        ⇥ Format Code
-                    </button>
-
-                    <button
-                        class="btn btn-secondary"
-                        onclick="loadExample()"
-                    >
-                        Load Example
-                    </button>
-
-                    <button
-                        class="btn btn-danger"
-                        onclick="clearProgram()"
-                    >
-                        Clear
-                    </button>
-
-                </div>
-
-                <div class="editor-help">
-
-                    <span>
-                        <kbd>Tab</kbd> 4 spaces
-                    </span>
-
-                    <span>
-                        <kbd>Shift</kbd> +
-                        <kbd>Tab</kbd> Outdent
-                    </span>
-
-                    <span>
-                        <kbd>Enter</kbd> New line · <kbd>Ctrl</kbd> + <kbd>Z</kbd> Undo · <kbd>Ctrl</kbd> + <kbd>Y</kbd> / <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> Redo
-                    </span>
-
-                </div>
-
                 <button type="button" class="panel-resize-handle" aria-label="Drag to resize pseudocode panel" title="Drag to resize"><span aria-hidden="true"></span></button>
 
             </section>
@@ -1832,11 +1759,6 @@
                     id="output"
                     class="output-console"
                 ></div>
-
-                <div id="pythonInputArea" class="input-section" style="display:none">
-                    <div class="input-title"><span class="input-icon">?</span><div><strong>Python Input</strong><p id="pythonInputInformation">Enter a value for input().</p></div></div>
-                    <div class="input-row"><input type="text" id="pythonUserInput" placeholder="Enter value" autocomplete="off"><button type="button" id="pythonInputSubmit">Enter</button></div>
-                </div>
 
                 <div
                     id="inputArea"
@@ -1899,6 +1821,92 @@
             </section>
 
         </main>
+
+        <div class="execution-toolbar-row">
+                <div class="button-row">
+
+                    <button
+                        class="btn btn-run"
+                        onclick="runProgram()"
+                    >
+                        ▶ Run
+                    </button>
+
+                    <button
+                        class="btn btn-secondary btn-pause-run"
+                        id="pauseRunButton"
+                        type="button"
+                        onclick="toggleExecutionPause()"
+                        disabled
+                    >
+                        ⏸ Pause Run
+                    </button>
+
+                    <button
+                        class="btn btn-danger"
+                        id="stopRunButton"
+                        type="button"
+                        onclick="stopProgram()"
+                        disabled
+                    >
+                        ■ Stop
+                    </button>
+
+                    <button
+                        class="btn btn-step"
+                        id="stepRunButton"
+                        onclick="runStepByStep()"
+                    >
+                        ▶ Step-by-Step
+                    </button>
+
+                    <button
+                        class="btn btn-check"
+                        onclick="checkSyntax()"
+                    >
+                        ✓ Check Syntax
+                    </button>
+
+                    <button
+                        class="btn btn-format"
+                        onclick="formatPseudocode()"
+                    >
+                        ⇥ Format Code
+                    </button>
+
+                    <button
+                        class="btn btn-secondary"
+                        onclick="loadExample()"
+                    >
+                        Load Example
+                    </button>
+
+                    <button
+                        class="btn btn-danger"
+                        onclick="clearProgram()"
+                    >
+                        Clear
+                    </button>
+
+                </div>
+
+                <div class="editor-help">
+
+                    <span>
+                        <kbd>Tab</kbd> 4 spaces
+                    </span>
+
+                    <span>
+                        <kbd>Shift</kbd> +
+                        <kbd>Tab</kbd> Outdent
+                    </span>
+
+                    <span>
+                        <kbd>Enter</kbd> New line · <kbd>Ctrl</kbd> + <kbd>Z</kbd> Undo · <kbd>Ctrl</kbd> + <kbd>Y</kbd> / <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> Redo
+                    </span>
+
+                </div>
+        </div>
 
     </section>
 
@@ -2579,8 +2587,6 @@ function createNewProjectObject() {
                 "pseudocode"
             )?.value || "",
 
-        codeLanguage: "auto",
-
         workStamp: createWorkStamp(now + "-" + (currentProfile?.id || "local")),
         profileId: currentProfile?.id || null,
         ownerDisplayName: currentProfile?.displayName || "",
@@ -2613,7 +2619,6 @@ function syncProjectFieldsToState() {
     currentProject.title = projectTitle.value.trim();
     currentProject.question = projectQuestion.value.trim();
     currentProject.pseudocode = document.getElementById("pseudocode")?.value || "";
-    currentProject.codeLanguage = document.getElementById("languageModeSelect")?.value || "auto";
 }
 
 function resetProjectHistory() {
@@ -2674,9 +2679,6 @@ function updateProjectFieldsFromState({ resetHistory = true } = {}) {
 
     projectQuestion.value =
         currentProject.question || "";
-
-    const languageMode = document.getElementById("languageModeSelect");
-    if (languageMode) languageMode.value = ["auto", "pseudocode", "python"].includes(currentProject.codeLanguage) ? currentProject.codeLanguage : "auto";
 
 
     const pseudocode =
@@ -3243,7 +3245,7 @@ function setProjectDetailsCollapsed(collapsed) {
 projectDetailsToggle.addEventListener("click", () => {
     setProjectDetailsCollapsed(!projectDetailsBar.classList.contains("collapsed"));
 });
-setProjectDetailsCollapsed(localStorage.getItem("diPseudoFlowProjectDetailsCollapsed") !== "false");
+setProjectDetailsCollapsed(localStorage.getItem("diPseudoFlowProjectDetailsCollapsed") === "true");
 
 projectTitle.addEventListener(
     "input",
@@ -7569,131 +7571,12 @@ editorForHistory.addEventListener("keydown",event=>{
 });
 resetPseudocodeHistory();
 
-// Language detection and bundled Python execution.
-const languageModeSelect = document.getElementById("languageModeSelect");
-const languageStatus = document.getElementById("languageStatus");
-const pythonInputArea = document.getElementById("pythonInputArea");
-const pythonUserInput = document.getElementById("pythonUserInput");
-let activePythonRunId = null;
-let pythonRunStopped = false;
-
-function detectProgrammingLanguage(source) {
-    const mode = languageModeSelect?.value || "auto";
-    if (mode !== "auto") return mode;
-    const text = String(source || "");
-    const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-    if (!lines.length) return "pseudocode";
-    const pythonScore = lines.reduce((score, line) => score + (
-        /^(?:from\s+\w+\s+import\s|import\s+\w|def\s+\w+\s*\(|class\s+\w+\s*[:(]|async\s+def\s|elif\s+.+:|if\s+.+:|else\s*:|for\s+.+\s+in\s+.+:|while\s+.+:|try\s*:|except(?:\s+.+)?:|finally\s*:|with\s+.+:|print\s*\(|input\s*\(|#.*)$/.test(line) || /\b(?:True|False|None)\b/.test(line) || /\b(?:and|or|not)\b/.test(line) ? 1 : 0), 0);
-    const pseudoScore = lines.reduce((score, line) => score + (
-        /^(?:start\b|stop\b|declare\b|read\b|output\b|input\b|endif\b|endcase\b|endwhile\b|endfor\b|otherwise\b|case\s+of\b)/i.test(line) || /^(?:print|display)\s+(?!\()/.test(line) || /\bthen\s*$/i.test(line) ? 1 : 0), 0);
-    return pythonScore > pseudoScore ? "python" : "pseudocode";
-}
-
-function refreshCodeLanguageUI() {
-    const mode = languageModeSelect?.value || "auto";
-    const active = detectProgrammingLanguage(document.getElementById("pseudocode")?.value || "");
-    if (languageStatus) languageStatus.textContent = `${mode === "auto" ? "Auto · " : "Selected · "}${active === "python" ? "Python" : "Pseudocode"}`;
-    const title = document.getElementById("editorTitle");
-    if (title) title.textContent = active === "python" ? "Python" : "Pseudocode";
-    const python = active === "python";
-    const step = document.getElementById("stepRunButton");
-    const pause = document.getElementById("pauseRunButton");
-    if (step) { step.hidden = python; step.title = python ? "Step-by-step execution is available for pseudocode." : "Run one pseudocode step at a time"; }
-    if (pause) pause.hidden = python;
-    document.querySelectorAll(".btn-check, .btn-format").forEach(button => { button.hidden = python; });
-    const example = Array.from(document.querySelectorAll(".button-row button")).find(button => button.textContent.includes("Load Example"));
-    if (example) example.hidden = python;
-    return active;
-}
-window.getActiveCodeLanguage = () => detectProgrammingLanguage(document.getElementById("pseudocode")?.value || "");
-window.refreshCodeLanguageUI = refreshCodeLanguageUI;
-languageModeSelect?.addEventListener("change", () => { syncProjectFieldsToState(); refreshCodeLanguageUI(); updateEditorVisuals(); markProjectDirty(); });
-document.getElementById("pseudocode")?.addEventListener("input", refreshCodeLanguageUI);
-refreshCodeLanguageUI();
-
-function runDetectedProgram(stepByStep = false) {
-    const language = detectProgrammingLanguage(document.getElementById("pseudocode")?.value || "");
-    if (language !== "python") {
-        pythonInputArea.style.display = "none";
-        activePythonRunId = null;
-        if (stepByStep) runStepByStep(); else runProgram();
-        return;
-    }
-    if (stepByStep) return;
-    if (window.dpfPreferences?.clearOutputBeforeRun !== false) clearOutput();
-    document.getElementById("inputArea").style.display = "none";
-    pythonInputArea.style.display = "none";
-    pythonRunStopped = false;
-    activePythonRunId = window.crypto.randomUUID();
-    const requestedRunId = activePythonRunId;
-    setEditorStatus("Starting Python…");
-    const stop = document.getElementById("stopRunButton");
-    if (stop) stop.disabled = false;
-    window.diPseudoFlow.runPythonCode(document.getElementById("pseudocode").value, requestedRunId).then(result => {
-        if (!result?.success) {
-            if (activePythonRunId !== requestedRunId) return;
-            activePythonRunId = null;
-            setEditorStatus("Python could not start");
-            printOutput(`Python error: ${result?.error || "Could not start Python."}`);
-            if (stop) stop.disabled = true;
-            return;
-        }
-        if (activePythonRunId !== requestedRunId) { window.diPseudoFlow.stopPython(requestedRunId); return; }
-        setEditorStatus(`Running Python ${result.pythonVersion || ""}`.trim());
-    }).catch(error => { if (activePythonRunId !== requestedRunId) return; activePythonRunId = null; setEditorStatus("Python could not start"); printOutput(`Python error: ${error.message || error}`); if (stop) stop.disabled = true; });
-}
-
-function toggleActivePause() { if (detectProgrammingLanguage(document.getElementById("pseudocode").value) !== "python") toggleExecutionPause(); }
-function stopActiveProgram() {
-    if (activePythonRunId) { pythonRunStopped = true; window.diPseudoFlow.stopPython(activePythonRunId); setEditorStatus("Stopping Python…"); return; }
-    stopProgram();
-}
-
-window.diPseudoFlow.onPythonOutput(payload => {
-    if (!payload || payload.runId !== activePythonRunId) return;
-    const output = document.getElementById("output");
-    output.textContent += payload.text || "";
-    output.scrollTop = output.scrollHeight;
-});
-window.diPseudoFlow.onPythonInputRequest(payload => {
-    if (!payload || payload.runId !== activePythonRunId) return;
-    pythonInputArea.style.display = "block";
-    document.getElementById("pythonInputInformation").textContent = "Enter a value for input().";
-    pythonUserInput.value = "";
-    pythonUserInput.focus();
-    setEditorStatus("Python is waiting for input");
-});
-window.diPseudoFlow.onPythonExit(payload => {
-    if (!payload || payload.runId !== activePythonRunId) return;
-    activePythonRunId = null;
-    pythonInputArea.style.display = "none";
-    const stop = document.getElementById("stopRunButton");
-    if (stop) stop.disabled = true;
-    if (pythonRunStopped) { setEditorStatus("Stopped"); printOutput("\nPython run stopped."); }
-    else if (payload.error) { setEditorStatus("Python process error"); printOutput(`\nPython process error: ${payload.error}`); }
-    else if (payload.code === 0) { setEditorStatus("Python finished"); printOutput("\nProgram finished."); }
-    else { setEditorStatus("Python finished with errors"); printOutput(`\nPython exited with code ${payload.code}.`); }
-});
-function submitPythonInput() {
-    if (!activePythonRunId) return;
-    const value = pythonUserInput.value;
-    const output = document.getElementById("output");
-    output.textContent += `${value}\n`;
-    output.scrollTop = output.scrollHeight;
-    window.diPseudoFlow.sendPythonInput(activePythonRunId, value).then(result => {
-        if (!result?.success) document.getElementById("pythonInputInformation").textContent = result?.error || "Could not send input.";
-        else { pythonInputArea.style.display = "none"; setEditorStatus("Running Python"); }
-    });
-}
-document.getElementById("pythonInputSubmit").addEventListener("click", submitPythonInput);
-pythonUserInput.addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); submitPythonInput(); } });
 const editorWorkspaceGrid=document.querySelector("#editorWorkspace .workspace");
 const outputPanelElement=document.querySelector(".output-panel");
 const layoutSelect=document.getElementById("workspaceLayoutSelect");
-layoutSelect.value=localStorage.getItem("dpf-workspace-layout-v2")||"stacked";
+layoutSelect.value=localStorage.getItem("dpf-workspace-layout-v3")||"side-by-side";
 editorWorkspaceGrid.classList.toggle("layout-stacked",layoutSelect.value==="stacked");
-layoutSelect.addEventListener("change",()=>{editorWorkspaceGrid.classList.toggle("layout-stacked",layoutSelect.value==="stacked");localStorage.setItem("dpf-workspace-layout-v2",layoutSelect.value);});
+layoutSelect.addEventListener("change",()=>{editorWorkspaceGrid.classList.toggle("layout-stacked",layoutSelect.value==="stacked");localStorage.setItem("dpf-workspace-layout-v3",layoutSelect.value);});
 const outputToggle=document.getElementById("toggleOutputButton");
 function setOutputVisible(visible){outputPanelElement.hidden=!visible;editorWorkspaceGrid.classList.toggle("output-hidden",!visible);outputToggle.textContent=visible?"Hide Output":"Show Output";outputToggle.setAttribute("aria-expanded",String(visible));window.dpfPreferences.showExecutionMessages=visible;localStorage.setItem(profileSettingsKey(),JSON.stringify(window.dpfPreferences));}
 setOutputVisible(localStorage.getItem("dpf-output-visible")==="false"?false:true);
@@ -7704,7 +7587,7 @@ focusButton.addEventListener("click",()=>setFocusMode(true));
 window.addEventListener("keydown",event=>{if(event.key==="Escape"&&document.body.classList.contains("focus-active"))setFocusMode(false);});
 const sidebarToggle=document.getElementById("sidebarToggle");
 function setSidebarCollapsed(collapsed){document.body.classList.toggle("sidebar-collapsed",collapsed);sidebarToggle.setAttribute("aria-expanded",String(!collapsed));sidebarToggle.setAttribute("aria-label",collapsed?"Expand sidebar":"Collapse sidebar");sidebarToggle.title=collapsed?"Expand sidebar":"Collapse sidebar";localStorage.setItem("dpf-sidebar-rail-v3",collapsed?"rail":"open");const labels={navHome:"Home",navProjects:"Projects",navSettings:"Settings",headerHelpButton:"Help"};Object.entries(labels).forEach(([id,label])=>{const item=document.getElementById(id);if(item)item.title=collapsed?label:"";});}
-setSidebarCollapsed(localStorage.getItem("dpf-sidebar-rail-v3")!=="open");
+setSidebarCollapsed(localStorage.getItem("dpf-sidebar-rail-v3")==="rail");
 sidebarToggle.addEventListener("click",()=>setSidebarCollapsed(!document.body.classList.contains("sidebar-collapsed")));
 document.getElementById("chooseProjectsFolder").addEventListener("click",async()=>{const result=await window.diPseudoFlow.chooseProjectsFolder();if(result?.success){document.getElementById("projectsFolderPath").textContent=result.directory;await refreshDashboardRecentProjects();}else if(!result?.canceled)alert(result?.error||"Could not select the project folder.");});
 window.diPseudoFlow.getProjectsFolder().then(result=>{if(result?.success)document.getElementById("projectsFolderPath").textContent=result.directory;}).catch(()=>{});

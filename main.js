@@ -9,138 +9,11 @@ const {
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
-const { spawn } = require("child_process");
 
 const { autoUpdater } = require("electron-updater");
 
 let mainWindow;
 let selectedProjectsDirectory = null;
-const activePythonRuns = new Map();
-
-function getBundledPythonExecutable() {
-    const pythonDirectory = app.isPackaged
-        ? path.join(process.resourcesPath, "python")
-        : path.join(__dirname, "python");
-    return path.join(pythonDirectory, "python.exe");
-}
-
-function sendPythonEvent(channel, payload) {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send(channel, payload);
-    }
-}
-
-function emitPythonStdout(run, chunk, final = false) {
-    const marker = "\u001eDPF_INPUT_REQUEST\u001e";
-    run.stdoutBuffer += String(chunk || "");
-    let markerIndex = run.stdoutBuffer.indexOf(marker);
-    while (markerIndex >= 0) {
-        const output = run.stdoutBuffer.slice(0, markerIndex);
-        if (output) sendPythonEvent("python:output", { runId: run.id, stream: "stdout", text: output });
-        run.stdoutBuffer = run.stdoutBuffer.slice(markerIndex + marker.length);
-        sendPythonEvent("python:input-request", { runId: run.id });
-        markerIndex = run.stdoutBuffer.indexOf(marker);
-    }
-    if (final) {
-        if (run.stdoutBuffer) sendPythonEvent("python:output", { runId: run.id, stream: "stdout", text: run.stdoutBuffer });
-        run.stdoutBuffer = "";
-        return;
-    }
-    let retained = 0;
-    const maxCheck = Math.min(marker.length - 1, run.stdoutBuffer.length);
-    for (let length = maxCheck; length > 0; length -= 1) {
-        if (marker.startsWith(run.stdoutBuffer.slice(-length))) { retained = length; break; }
-    }
-    const ready = run.stdoutBuffer.slice(0, run.stdoutBuffer.length - retained);
-    run.stdoutBuffer = run.stdoutBuffer.slice(run.stdoutBuffer.length - retained);
-    if (ready) sendPythonEvent("python:output", { runId: run.id, stream: "stdout", text: ready });
-}
-
-function finishPythonRun(run, result = {}) {
-    if (run.finished) return;
-    run.finished = true;
-    emitPythonStdout(run, "", true);
-    activePythonRuns.delete(run.id);
-    try { fs.unlinkSync(run.scriptPath); } catch (_) {}
-    sendPythonEvent("python:exit", { runId: run.id, code: result.code ?? null, signal: result.signal || null, error: result.error || null });
-}
-
-ipcMain.handle("python:run", (_event, request = {}) => {
-    try {
-        const code = String(request.code || "");
-        if (!code.trim()) throw new Error("Enter some Python code before running it.");
-        if (code.length > 1_000_000) throw new Error("Python code is too large to run in one session.");
-
-        const executable = getBundledPythonExecutable();
-        if (!fs.existsSync(executable)) throw new Error("The bundled Python runtime is missing. Rebuild the installer with the Python folder included.");
-
-        for (const priorRun of activePythonRuns.values()) {
-            try { priorRun.child.kill(); } catch (_) {}
-        }
-
-        const requestedRunId = String(request.runId || "");
-        const runId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestedRunId)
-            ? requestedRunId
-            : crypto.randomUUID();
-        const runDirectory = path.join(app.getPath("userData"), "python-runs");
-        fs.mkdirSync(runDirectory, { recursive: true });
-        const scriptPath = path.join(runDirectory, `${runId}.py`);
-        fs.writeFileSync(scriptPath, code, { encoding: "utf8", flag: "wx" });
-
-        const bootstrap = [
-            "import builtins, runpy, sys",
-            "def __dpf_input(prompt=''):",
-            "    if prompt:",
-            "        sys.stdout.write(str(prompt))",
-            "        sys.stdout.flush()",
-            "    sys.stdout.write('\\x1eDPF_INPUT_REQUEST\\x1e')",
-            "    sys.stdout.flush()",
-            "    value = sys.stdin.readline()",
-            "    if value == '':",
-            "        raise EOFError",
-            "    return value.rstrip('\\r\\n')",
-            "builtins.input = __dpf_input",
-            "runpy.run_path(sys.argv[1], run_name='__main__')"
-        ].join("\n");
-
-        const child = spawn(executable, ["-I", "-X", "utf8", "-u", "-c", bootstrap, scriptPath], {
-            cwd: app.getPath("userData"),
-            windowsHide: true,
-            shell: false,
-            stdio: ["pipe", "pipe", "pipe"],
-            env: { ...process.env, PYTHONUTF8: "1", PYTHONIOENCODING: "utf-8" }
-        });
-        const run = { id: runId, child, scriptPath, stdoutBuffer: "", finished: false };
-        activePythonRuns.set(runId, run);
-        child.stdout.setEncoding("utf8");
-        child.stderr.setEncoding("utf8");
-        child.stdout.on("data", chunk => emitPythonStdout(run, chunk));
-        child.stderr.on("data", text => sendPythonEvent("python:output", { runId, stream: "stderr", text }));
-        child.once("error", error => finishPythonRun(run, { error: error.message }));
-        child.once("close", (code, signal) => finishPythonRun(run, { code, signal }));
-        return { success: true, runId, pythonVersion: "3.14.10" };
-    } catch (error) {
-        return { success: false, error: error.message || "Could not start Python." };
-    }
-});
-
-ipcMain.handle("python:input", (_event, request = {}) => {
-    const run = activePythonRuns.get(String(request.runId || ""));
-    if (!run || run.finished || !run.child.stdin.writable) return { success: false, error: "This Python run is no longer waiting for input." };
-    try {
-        run.child.stdin.write(String(request.value ?? "") + "\n", "utf8");
-        return { success: true };
-    } catch (error) {
-        return { success: false, error: error.message || "Could not send input to Python." };
-    }
-});
-
-ipcMain.handle("python:stop", (_event, runId) => {
-    const run = activePythonRuns.get(String(runId || ""));
-    if (!run || run.finished) return { success: false };
-    try { run.child.kill(); return { success: true }; }
-    catch (error) { return { success: false, error: error.message || "Could not stop Python." }; }
-});
 
 function getProjectsDirectorySettingPath() {
     return path.join(app.getPath("userData"), "projects-location.json");
@@ -1121,9 +994,3 @@ app.on(
         }
     }
 );
-
-app.on("before-quit", () => {
-    for (const run of activePythonRuns.values()) {
-        try { run.child.kill(); } catch (_) {}
-    }
-});
