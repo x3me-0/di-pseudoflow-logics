@@ -1231,6 +1231,37 @@
         body[data-ui-scale="small"] { zoom:.92; }
         body[data-ui-scale="large"] { zoom:1.08; }
         @media(max-width:760px){.app{width:100%;margin-left:0}.app-sidebar{position:sticky;inset:auto;width:100%;height:auto;padding:8px 10px;flex-direction:row;align-items:center;gap:8px}.sidebar-brand{border:0;padding:4px}.sidebar-brand img{width:30px;height:30px}.sidebar-brand span{display:none}.sidebar-nav{display:flex;gap:3px;overflow:auto}.sidebar-nav button{padding:8px;font-size:12px;white-space:nowrap}.sidebar-profile{margin:0 0 0 auto;padding:0;border:0}.sidebar-profile-summary span:last-child{display:none}.sidebar-profile .sign-out{padding:7px}.app{display:flex;flex-direction:column}.profile-form .profile-name-row{grid-template-columns:1fr}.dashboard-page,.settings-page{padding:22px 14px}body.sidebar-collapsed .app-sidebar{position:fixed;inset:0 auto 0 0;width:64px;height:100vh;padding:64px 7px 12px;flex-direction:column;align-items:stretch}body.sidebar-collapsed .app{width:calc(100% - 64px);margin-left:64px}body.sidebar-collapsed .sidebar-brand{border-bottom:1px solid #253247;padding:0 0 12px}body.sidebar-collapsed .sidebar-nav{display:grid}body.sidebar-collapsed .sidebar-nav button{font-size:0;padding:0}}
+        /* Compact controls and reliable icon-rail sidebar behavior. */
+        body.sidebar-collapsed .app-sidebar { width:64px; padding:64px 7px 12px; }
+        body.sidebar-collapsed #appRoot.app { width:calc(100% - 64px); margin-left:64px; }
+        body.sidebar-collapsed .sidebar-toggle { left:10px; }
+        body:not(.sidebar-collapsed) .sidebar-toggle { left:154px; }
+        body.sidebar-collapsed .sidebar-nav button { position:relative; display:grid; place-items:center; width:48px; min-width:48px; height:46px; padding:0; font-size:0; }
+        body.sidebar-collapsed .sidebar-nav button::before { display:block; font-size:20px; line-height:1; }
+        .editor-panel .panel-header { display:grid; grid-template-columns:minmax(120px,1fr) auto; grid-template-areas:"title status" "actions actions"; gap:9px 12px; align-items:center; }
+        .editor-panel .panel-title { grid-area:title; min-width:0; }
+        .editor-panel .editor-status { grid-area:status; justify-self:end; white-space:nowrap; }
+        .editor-actions-top { grid-area:actions; display:flex; flex-wrap:nowrap; min-width:0; max-width:100%; overflow-x:auto; overflow-y:hidden; padding:2px 0 4px; scrollbar-width:thin; }
+        .editor-actions-top button,.editor-actions-top select { flex:0 0 auto; }
+        .button-row { flex-wrap:nowrap; align-items:center; overflow-x:auto; overflow-y:hidden; scrollbar-width:thin; }
+        .button-row .btn { flex:0 0 auto; white-space:nowrap; }
+        .editor-help { overflow-x:auto; white-space:nowrap; scrollbar-width:thin; }
+
+        /* Connection anchors stay quiet except for selected, hovered, or snapped shapes. */
+        .connector-anchor-point { opacity:0; pointer-events:none; transition:opacity .1s ease; }
+        .flowchart-node.selected .connector-anchor-point,
+        .flowchart-node.connector-source .connector-anchor-point { opacity:1; }
+        .flowchart-canvas.connection-mode .flowchart-node:hover .connector-anchor-point { opacity:1; pointer-events:auto; }
+        .flowchart-canvas.connection-mode .flowchart-node.connector-source .connector-anchor-point { pointer-events:auto; }
+        .connector-anchor-hit { fill:transparent; stroke:none; pointer-events:all; cursor:crosshair; }
+        .connector-anchor { fill:#f59e0b; stroke:#fff7ed; stroke-width:1.5; vector-effect:non-scaling-stroke; pointer-events:none; }
+        .connector-anchor-point.snap-target { opacity:1!important; }
+        .connector-anchor-point.snap-target .connector-anchor { fill:#22d3ee; stroke:#ecfeff; stroke-width:2.5; filter:drop-shadow(0 0 4px #22d3ee); }
+        @media(max-width:900px) {
+            .editor-panel .panel-header { grid-template-columns:minmax(0,1fr) auto; }
+            .editor-actions-top { max-width:calc(100vw - 100px); }
+            .workspace:not(.layout-stacked) { grid-template-columns:minmax(0,1fr); }
+        }
 </style>
 
 </head>
@@ -2378,6 +2409,9 @@ const FLOW_HISTORY_LIMIT = 60;
 
 let connectorSourceNode = null;
 let connectorSourceSide = null;
+let connectorPointerGesture = null;
+let connectorSnapTarget = null;
+let lastSnapTargetAnchor = null;
 
 let editingNodeId = null;
 let editingConnectorId = null;
@@ -2407,6 +2441,49 @@ let activeResize = null;
 /* =========================================================
    PROJECT STRUCTURE
 ========================================================= */
+
+const FLOW_ANCHOR_NORMALIZED = Object.freeze({
+    top: { x: 0.5, y: 0 },
+    "top-right": { x: 1, y: 0 },
+    right: { x: 1, y: 0.5 },
+    "bottom-right": { x: 1, y: 1 },
+    bottom: { x: 0.5, y: 1 },
+    "bottom-left": { x: 0, y: 1 },
+    left: { x: 0, y: 0.5 },
+    "top-left": { x: 0, y: 0 }
+});
+
+function normalizeConnectorAnchorId(side) {
+    if (Object.hasOwn(FLOW_ANCHOR_NORMALIZED, side)) return side;
+    const aliases = {
+        "top-inner-left": "top", "top-inner-right": "top",
+        "top-upper-left": "top-left", "top-upper-right": "top-right",
+        "right-upper": "top-right", "right-inner-upper": "top-right",
+        "right-lower": "bottom-right", "right-inner-lower": "bottom-right",
+        "bottom-inner-left": "bottom", "bottom-inner-right": "bottom",
+        "bottom-lower-left": "bottom-left", "bottom-lower-right": "bottom-right",
+        "left-upper": "top-left", "left-inner-upper": "top-left",
+        "left-lower": "bottom-left", "left-inner-lower": "bottom-left",
+        "left-upper": "top-left", "top-inner": "top", "bottom-inner": "bottom"
+    };
+    return aliases[side] || "auto";
+}
+
+function ensureNodeAnchorPoints(node) {
+    const current = node.anchorPoints;
+    const complete = current && Object.keys(FLOW_ANCHOR_NORMALIZED).every(id =>
+        Number.isFinite(Number(current[id]?.x)) && Number.isFinite(Number(current[id]?.y))
+    );
+    if (!complete) {
+        node.anchorPoints = Object.fromEntries(Object.entries(FLOW_ANCHOR_NORMALIZED).map(([id, point]) => {
+            const saved = current?.[id];
+            return [id, saved && Number.isFinite(Number(saved.x)) && Number.isFinite(Number(saved.y))
+                ? { x: Math.max(0, Math.min(1, Number(saved.x))), y: Math.max(0, Math.min(1, Number(saved.y))) }
+                : { x: point.x, y: point.y }];
+        }));
+    }
+    return node.anchorPoints;
+}
 
 function ensureFlowchartStructure() {
 
@@ -2447,6 +2524,14 @@ function ensureFlowchartStructure() {
 
         currentProject.flowchart.connectors = [];
     }
+
+    currentProject.flowchart.nodes.forEach(ensureNodeAnchorPoints);
+    currentProject.flowchart.connectors.forEach(connector => {
+        connector.fromSide = normalizeConnectorAnchorId(connector.fromAnchorId || connector.fromSide);
+        connector.toSide = normalizeConnectorAnchorId(connector.toAnchorId || connector.toSide);
+        connector.fromAnchorId = connector.fromSide;
+        connector.toAnchorId = connector.toSide;
+    });
 
     if (!Number.isFinite(Number(currentProject.flowchart.zoom))) currentProject.flowchart.zoom = 1;
     if (!Number.isFinite(Number(currentProject.flowchart.panX))) currentProject.flowchart.panX = 0;
@@ -3809,6 +3894,7 @@ function updateNodeVisual(
         group,
         node
     );
+    updateConnectorAnchorVisuals(node, group);
 }
 
 
@@ -4202,7 +4288,7 @@ function renderFlowNode(
     }
 
 
-    if (selectedFlowTool === "connector" && window.dpfPreferences.showConnectionPoints !== false) {
+    if ((selectedFlowTool === "connector" || selectedFlowNodes.has(node.id) || selectedFlowNode === node.id) && window.dpfPreferences.showConnectionPoints !== false) {
         createConnectorAnchors(group, node);
     }
 
@@ -4213,115 +4299,72 @@ function renderFlowNode(
 
 
 function getNodeAnchorPositions(node) {
-    const left = node.x;
-    const right = node.x + node.width;
-    const top = node.y;
-    const bottom = node.y + node.height;
-    const middleX = node.x + node.width / 2;
-    const middleY = node.y + node.height / 2;
-
-    // Put anchors on each symbol's visible outline, not its rectangular bounds.
-    if (node.type === "decision") {
-        const vertices = [
-            { x: middleX, y: top }, { x: right, y: middleY },
-            { x: middleX, y: bottom }, { x: left, y: middleY }
-        ];
-        const anchors = {
-            top: vertices[0], right: vertices[1], bottom: vertices[2], left: vertices[3]
-        };
-        const keys = [
-            ["top-right", "right-upper"], ["right-lower", "bottom-right"],
-            ["bottom-left", "left-lower"], ["left-upper", "top-left"]
-        ];
-        vertices.forEach((a, edge) => {
-            const b = vertices[(edge + 1) % vertices.length];
-            [1 / 3, 2 / 3].forEach((t, index) => {
-                const key = keys[edge][index];
-                anchors[key] = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
-            });
-        });
-        return anchors;
-    }
-    if (node.type === "connection") {
-        const radius = Math.max(8, Math.min(node.width, node.height) / 2);
-        const keys = ["top", "top-upper-right", "top-right", "right-upper", "right", "right-lower", "bottom-right", "bottom-lower-right", "bottom", "bottom-lower-left", "bottom-left", "left-lower", "left", "left-upper", "top-left", "top-upper-left"];
-        return Object.fromEntries(keys.map((key, index) => {
-            const angle = -Math.PI / 2 + index * (Math.PI * 2 / keys.length);
-            return [key, { x: middleX + Math.cos(angle) * radius, y: middleY + Math.sin(angle) * radius }];
-        }));
-    }
-    if (node.type === "start-end") {
-        const radius = Math.min(node.height / 2, node.width / 2);
-        const straightLeft = left + radius;
-        const straightRight = right - radius;
-        const arc = (centerX, angle) => ({ x: centerX + Math.cos(angle * Math.PI / 180) * radius, y: middleY + Math.sin(angle * Math.PI / 180) * radius });
-        return {
-            top: { x: middleX, y: top }, "top-left": { x: straightLeft + (straightRight - straightLeft) / 3, y: top },
-            "top-right": { x: straightLeft + 2 * (straightRight - straightLeft) / 3, y: top },
-            "top-inner-left": { x: straightLeft + (straightRight - straightLeft) / 4, y: top }, "top-inner-right": { x: straightLeft + 3 * (straightRight - straightLeft) / 4, y: top },
-            "right-upper": arc(straightRight, -45), right: arc(straightRight, 0), "right-lower": arc(straightRight, 45),
-            bottom: { x: middleX, y: bottom }, "bottom-left": { x: straightLeft + (straightRight - straightLeft) / 3, y: bottom },
-            "bottom-right": { x: straightLeft + 2 * (straightRight - straightLeft) / 3, y: bottom },
-            "bottom-inner-left": { x: straightLeft + (straightRight - straightLeft) / 4, y: bottom }, "bottom-inner-right": { x: straightLeft + 3 * (straightRight - straightLeft) / 4, y: bottom },
-            "left-upper": arc(straightLeft, 225), left: arc(straightLeft, 180), "left-lower": arc(straightLeft, 135)
-        };
-    }
-    if (node.type === "input-output") {
-        const skew = Math.min(30, node.width * 0.18);
-        const topLeft = { x: left + skew, y: top };
-        const topRight = { x: right, y: top };
-        const bottomRight = { x: right - skew, y: bottom };
-        const bottomLeft = { x: left, y: bottom };
-        const along = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
-        return {
-            top: along(topLeft, topRight, 0.5), "top-left": along(topLeft, topRight, 0.25), "top-right": along(topLeft, topRight, 0.75),
-            "top-inner-left": along(topLeft, topRight, 1 / 3), "top-inner-right": along(topLeft, topRight, 2 / 3),
-            right: along(topRight, bottomRight, 0.5), "right-upper": along(topRight, bottomRight, 0.25), "right-lower": along(topRight, bottomRight, 0.75),
-            "right-inner-upper": along(topRight, bottomRight, 1 / 3), "right-inner-lower": along(topRight, bottomRight, 2 / 3),
-            bottom: along(bottomLeft, bottomRight, 0.5), "bottom-left": along(bottomLeft, bottomRight, 0.25), "bottom-right": along(bottomLeft, bottomRight, 0.75),
-            "bottom-inner-left": along(bottomLeft, bottomRight, 1 / 3), "bottom-inner-right": along(bottomLeft, bottomRight, 2 / 3),
-            left: along(topLeft, bottomLeft, 0.5), "left-upper": along(topLeft, bottomLeft, 0.25), "left-lower": along(topLeft, bottomLeft, 0.75),
-            "left-inner-upper": along(topLeft, bottomLeft, 1 / 3), "left-inner-lower": along(topLeft, bottomLeft, 2 / 3)
-        };
-    }
-    return {
-        top: { x: middleX, y: top }, "top-left": { x: left + node.width / 4, y: top }, "top-right": { x: right - node.width / 4, y: top },
-        "top-inner-left": { x: left + node.width / 3, y: top }, "top-inner-right": { x: right - node.width / 3, y: top },
-        right: { x: right, y: middleY }, "right-upper": { x: right, y: top + node.height / 4 }, "right-lower": { x: right, y: bottom - node.height / 4 },
-        "right-inner-upper": { x: right, y: top + node.height / 3 }, "right-inner-lower": { x: right, y: bottom - node.height / 3 },
-        bottom: { x: middleX, y: bottom }, "bottom-left": { x: left + node.width / 4, y: bottom }, "bottom-right": { x: right - node.width / 4, y: bottom },
-        "bottom-inner-left": { x: left + node.width / 3, y: bottom }, "bottom-inner-right": { x: right - node.width / 3, y: bottom },
-        left: { x: left, y: middleY }, "left-upper": { x: left, y: top + node.height / 4 }, "left-lower": { x: left, y: bottom - node.height / 4 },
-        "left-inner-upper": { x: left, y: top + node.height / 3 }, "left-inner-lower": { x: left, y: bottom - node.height / 3 }
-    };
+    const normalized = ensureNodeAnchorPoints(node);
+    return Object.fromEntries(Object.entries(normalized).map(([id, point]) => [id, {
+        x: node.x + point.x * node.width,
+        y: node.y + point.y * node.height
+    }]));
 }
-
 function createConnectorAnchors(group, node) {
     const anchors = getNodeAnchorPositions(node);
-    Object.entries(anchors).forEach(([side, point]) => {
-        const anchor = document.createElementNS(SVG_NS, "circle");
-        anchor.classList.add("connector-anchor");
-        if (connectorSourceNode === node.id && connectorSourceSide === side) {
-            anchor.classList.add("source-anchor");
-        }
-        anchor.setAttribute("cx", point.x);
-        anchor.setAttribute("cy", point.y);
-        anchor.setAttribute("r", 5);
-        anchor.setAttribute("aria-label", `${side} connection point`);
-        anchor.addEventListener("pointerdown", event => {
+    const elements = {};
+    Object.entries(anchors).forEach(([anchorId, point]) => {
+        const anchorGroup = document.createElementNS(SVG_NS, "g");
+        anchorGroup.classList.add("connector-anchor-point");
+        anchorGroup.dataset.anchorId = anchorId;
+        anchorGroup.setAttribute("aria-label", `${anchorId} connection point`);
+
+        const hitArea = document.createElementNS(SVG_NS, "circle");
+        hitArea.classList.add("connector-anchor-hit");
+        hitArea.setAttribute("cx", point.x);
+        hitArea.setAttribute("cy", point.y);
+        hitArea.setAttribute("r", 11);
+
+        const marker = document.createElementNS(SVG_NS, "circle");
+        marker.classList.add("connector-anchor");
+        if (connectorSourceNode === node.id && connectorSourceSide === anchorId) marker.classList.add("source-anchor");
+        marker.setAttribute("cx", point.x);
+        marker.setAttribute("cy", point.y);
+        marker.setAttribute("r", 4);
+
+        anchorGroup.addEventListener("pointerdown", event => {
+            if (selectedFlowTool !== "connector") return;
             event.preventDefault();
             event.stopPropagation();
-            handleConnectorAnchorClick(node.id, side);
+            if (!connectorSourceNode) {
+                connectorPointerGesture = { x: event.clientX, y: event.clientY, moved: false };
+                window.addEventListener("pointerup", finishConnectorPointerGesture, { once: true });
+            }
+            handleConnectorAnchorClick(node.id, anchorId);
         });
-        group.appendChild(anchor);
+        anchorGroup.append(hitArea, marker);
+        group.appendChild(anchorGroup);
+        elements[anchorId] = { group: anchorGroup, hitArea, marker };
+    });
+    group.__flowAnchorElements = elements;
+}
+
+function updateConnectorAnchorVisuals(node, group) {
+    if (!group?.__flowAnchorElements) return;
+    const points = getNodeAnchorPositions(node);
+    Object.entries(points).forEach(([anchorId, point]) => {
+        const anchor = group.__flowAnchorElements[anchorId];
+        if (!anchor) return;
+        [anchor.hitArea, anchor.marker].forEach(element => {
+            element.setAttribute("cx", point.x);
+            element.setAttribute("cy", point.y);
+        });
     });
 }
 
-
-/* =========================================================
-   RENDER FLOWCHART
-========================================================= */
-
+function finishConnectorPointerGesture(event) {
+    const gesture = connectorPointerGesture;
+    connectorPointerGesture = null;
+    if (!gesture || !connectorSnapTarget || !connectorSourceNode) return;
+    if (Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) < 7) return;
+    const target = connectorSnapTarget;
+    handleConnectorAnchorClick(target.nodeId, target.anchorId);
+}
 function renderFlowchart() {
 
     ensureFlowchartStructure();
@@ -4395,6 +4438,14 @@ function selectFlowNode(
                     active
                 );
 
+                if (active && window.dpfPreferences.showConnectionPoints !== false && !group.__flowAnchorElements) {
+                    const selectedNode = getNodeById(group.dataset.nodeId);
+                    if (selectedNode) createConnectorAnchors(group, selectedNode);
+                } else if (!active && selectedFlowTool !== "connector" && group.__flowAnchorElements) {
+                    Object.values(group.__flowAnchorElements).forEach(anchor => anchor.group.remove());
+                    group.__flowAnchorElements = null;
+                }
+
 
                 group.classList.toggle(
                     "connector-source",
@@ -4467,6 +4518,10 @@ function setFlowTool(
         connectorSourceNode =
             null;
         connectorSourceSide = null;
+        connectorPointerGesture = null;
+        connectorSnapTarget = null;
+        if (lastSnapTargetAnchor) lastSnapTargetAnchor.classList.remove("snap-target");
+        lastSnapTargetAnchor = null;
     }
 
 
@@ -4485,6 +4540,7 @@ function setFlowTool(
     });
 
     flowchartCanvasWrapper.style.cursor = tool === "connector" ? "crosshair" : "default";
+    flowchartCanvas.classList.toggle("connection-mode", tool === "connector");
     if (tool !== "connector") {
         const preview = flowchartConnectors.querySelector(".connector-preview");
         if (preview) preview.remove();
@@ -4876,7 +4932,7 @@ function handleNodeDragMove(
     });
 
 
-    updateAllConnectorGeometry();
+    updateAllConnectorGeometry(new Set(activeDrag.nodes.map(item => item.node.id)));
 }
 
 
@@ -5187,13 +5243,12 @@ function handleResizeMove(
     }
 
 
-    updateAllConnectorGeometry();
-
-    markProjectDirty();
+    updateAllConnectorGeometry(new Set([activeResize.node.id]));
 }
 
 
 function stopResize() {
+    const resized = activeResize;
     activeResize = null;
 
 
@@ -5201,6 +5256,8 @@ function stopResize() {
         "pointermove",
         handleResizeMove
     );
+
+    if (resized) markProjectDirty();
 }
 
 
@@ -5763,8 +5820,10 @@ function handleConnectorAnchorClick(nodeId, side) {
         id: createId("connector"),
         from: source.id,
         to: node.id,
-        fromSide: connectorSourceSide,
-        toSide: side,
+                fromSide: connectorSourceSide,
+                toSide: side,
+        fromAnchorId: connectorSourceSide,
+        toAnchorId: side,
         route: document.getElementById("flowConnectorRoute").value,
         label
     };
@@ -5794,75 +5853,75 @@ function getConnectionPoint(
         if (anchors[side]) return anchors[side];
     }
 
-    const sourceCenterX =
-        node.x +
-        node.width / 2;
+    return getNodeAnchorPositions(node)[chooseBestAnchorPair(node, targetNode).fromId];
+}
 
+function chooseBestAnchorPair(from, to) {
+    const fromCenter = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
+    const toCenter = { x: to.x + to.width / 2, y: to.y + to.height / 2 };
+    const dx = toCenter.x - fromCenter.x;
+    const dy = toCenter.y - fromCenter.y;
+    const distance = Math.max(1, Math.hypot(dx, dy));
+    const direction = { x: dx / distance, y: dy / distance };
+    const fromAnchors = getNodeAnchorPositions(from);
+    const toAnchors = getNodeAnchorPositions(to);
+    let best = null;
+    let bestScore = Infinity;
+    for (const [fromId, start] of Object.entries(fromAnchors)) {
+        const fromLength = Math.hypot(start.x - fromCenter.x, start.y - fromCenter.y) || 1;
+        const fromNormal = { x: (start.x - fromCenter.x) / fromLength, y: (start.y - fromCenter.y) / fromLength };
+        for (const [toId, end] of Object.entries(toAnchors)) {
+            const toLength = Math.hypot(end.x - toCenter.x, end.y - toCenter.y) || 1;
+            const toNormal = { x: (end.x - toCenter.x) / toLength, y: (end.y - toCenter.y) / toLength };
+            const facingPenalty = (1 - fromNormal.x * direction.x - fromNormal.y * direction.y) +
+                (1 + toNormal.x * direction.x + toNormal.y * direction.y);
+            const score = Math.hypot(end.x - start.x, end.y - start.y) + facingPenalty * 48;
+            if (score < bestScore) { bestScore = score; best = { fromId, toId, score }; }
+        }
+    }
+    return best || { fromId: "right", toId: "left", score: Infinity };
+}
 
-    const sourceCenterY =
-        node.y +
-        node.height / 2;
-
-
-    const targetCenterX =
-        targetNode.x +
-        targetNode.width / 2;
-
-
-    const targetCenterY =
-        targetNode.y +
-        targetNode.height / 2;
-
-
-    const dx =
-        targetCenterX -
-        sourceCenterX;
-
-
-    const dy =
-        targetCenterY -
-        sourceCenterY;
-
-
-    /*
-       For vertical relationships, use top/bottom.
-       For horizontal relationships, use left/right.
-    */
-
-    const selectedSide = Math.abs(dx) > Math.abs(dy)
-        ? (dx >= 0 ? "right" : "left")
-        : (dy >= 0 ? "bottom" : "top");
-    return getNodeAnchorPositions(node)[selectedSide];
+function getAnchorNormal(node, anchorId, orthogonal = false) {
+    const point = ensureNodeAnchorPoints(node)[anchorId] || FLOW_ANCHOR_NORMALIZED.right;
+    let x = point.x - 0.5;
+    let y = point.y - 0.5;
+    if (orthogonal) {
+        if (Math.abs(x) > Math.abs(y)) y = 0;
+        else x = 0;
+    }
+    const length = Math.hypot(x, y) || 1;
+    return { x: x / length, y: y / length };
 }
 
 function getConnectorGeometry(connector, from, to) {
-    const fromCenter = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
-    const toCenter = { x: to.x + to.width / 2, y: to.y + to.height / 2 };
-    const autoFrom = Math.abs(toCenter.x - fromCenter.x) > Math.abs(toCenter.y - fromCenter.y)
-        ? (toCenter.x >= fromCenter.x ? "right" : "left")
-        : (toCenter.y >= fromCenter.y ? "bottom" : "top");
-    const autoTo = Math.abs(fromCenter.x - toCenter.x) > Math.abs(fromCenter.y - toCenter.y)
-        ? (fromCenter.x >= toCenter.x ? "right" : "left")
-        : (fromCenter.y >= toCenter.y ? "bottom" : "top");
-    const fromSide = connector.fromSide && connector.fromSide !== "auto" ? connector.fromSide : autoFrom;
-    const toSide = connector.toSide && connector.toSide !== "auto" ? connector.toSide : autoTo;
-    const directionOf = side => String(side || "").split("-")[0];
-    const fromDirection = directionOf(fromSide);
-    const toDirection = directionOf(toSide);
+    const fromAnchor = normalizeConnectorAnchorId(connector.fromAnchorId || connector.fromSide);
+    const toAnchor = normalizeConnectorAnchorId(connector.toAnchorId || connector.toSide);
+    const bestPair = fromAnchor === "auto" || toAnchor === "auto" ? chooseBestAnchorPair(from, to) : null;
+    const fromSide = fromAnchor === "auto" ? bestPair.fromId : fromAnchor;
+    const toSide = toAnchor === "auto" ? bestPair.toId : toAnchor;
     const start = getNodeAnchorPositions(from)[fromSide];
     const targetAnchor = getNodeAnchorPositions(to)[toSide];
-    const normals = { left: { x: -1, y: 0 }, right: { x: 1, y: 0 }, top: { x: 0, y: -1 }, bottom: { x: 0, y: 1 } };
+    const orthogonal = connector.route === "orthogonal";
+    const fromNormal = getAnchorNormal(from, fromSide, orthogonal);
+    const normal = getAnchorNormal(to, toSide, orthogonal);
     const clearance = to.id === "__connector_preview__" ? 0 : (connector.route === "orthogonal" ? 10 : 8);
-    const normal = normals[toDirection];
     // Leave a small visible gap before the arrow tip so it reads as connected, not welded into the shape.
     const end = { x: targetAnchor.x + normal.x * clearance, y: targetAnchor.y + normal.y * clearance };
     if (connector.route === "orthogonal") {
-        const fromNormal = normals[fromDirection];
         const lead = 26;
         const startLead = { x: start.x + fromNormal.x * lead, y: start.y + fromNormal.y * lead };
         const endLead = { x: end.x + normal.x * lead, y: end.y + normal.y * lead };
+        const routeMargin = 120;
+        const routeBounds = {
+            left: Math.min(startLead.x, endLead.x) - routeMargin,
+            right: Math.max(startLead.x, endLead.x) + routeMargin,
+            top: Math.min(startLead.y, endLead.y) - routeMargin,
+            bottom: Math.max(startLead.y, endLead.y) + routeMargin
+        };
         const obstacles = currentProject.flowchart.nodes
             .filter(node => node.id !== from.id && node.id !== to.id)
+            .filter(node => node.x + node.width >= routeBounds.left && node.x <= routeBounds.right && node.y + node.height >= routeBounds.top && node.y <= routeBounds.bottom)
             .map(node => ({ left: node.x - 20, right: node.x + node.width + 20, top: node.y - 20, bottom: node.y + node.height + 20 }));
         const xs = [...new Set([startLead.x, endLead.x, (startLead.x + endLead.x) / 2, ...obstacles.flatMap(rect => [rect.left, rect.right])])].sort((a,b) => a-b);
         const ys = [...new Set([startLead.y, endLead.y, (startLead.y + endLead.y) / 2, ...obstacles.flatMap(rect => [rect.top, rect.bottom])])].sort((a,b) => a-b);
@@ -5923,36 +5982,56 @@ function getConnectorGeometry(connector, from, to) {
 }
 
 
-function updateConnectorPreview(event) {
+let connectorPreviewFrame = 0;
+let pendingConnectorPointer = null;
+let lastConnectorTarget = null;
+
+function updateConnectorPreviewAt(clientX, clientY) {
     let preview = flowchartConnectors.querySelector(".connector-preview");
     if (selectedFlowTool !== "connector" || !connectorSourceNode) {
         if (preview) preview.remove();
+        connectorSnapTarget = null;
+        if (lastSnapTargetAnchor) lastSnapTargetAnchor.classList.remove("snap-target");
+        lastSnapTargetAnchor = null;
         return;
     }
     const source = getNodeById(connectorSourceNode);
     if (!source) { if (preview) preview.remove(); return; }
-    const pointer = getCanvasPoint(event.clientX, event.clientY);
-    let target = null;
-    let targetDistance = Infinity;
-    currentProject.flowchart.nodes.forEach(node => {
-        if (node.id === source.id) return;
-        const nearX = Math.max(node.x - 16, Math.min(pointer.x, node.x + node.width + 16));
-        const nearY = Math.max(node.y - 16, Math.min(pointer.y, node.y + node.height + 16));
-        const distance = Math.hypot(pointer.x - nearX, pointer.y - nearY);
-        if (distance <= 22 && distance < targetDistance) { target = node; targetDistance = distance; }
-    });
-    let toSide = "auto";
-    let to = {
+
+    const pointer = getCanvasPoint(clientX, clientY);
+    const snapRadius = 18 / Math.max(0.35, flowZoom);
+    let best = null;
+    let bestDistance = snapRadius;
+
+    // Reject distant shapes by their bounds first; only evaluate anchor sets for nearby candidates.
+    for (const node of currentProject.flowchart.nodes) {
+        if (node.id === source.id) continue;
+        const nearX = Math.max(node.x - snapRadius, Math.min(pointer.x, node.x + node.width + snapRadius));
+        const nearY = Math.max(node.y - snapRadius, Math.min(pointer.y, node.y + node.height + snapRadius));
+        if (Math.hypot(pointer.x - nearX, pointer.y - nearY) > snapRadius) continue;
+        for (const [anchorId, point] of Object.entries(getNodeAnchorPositions(node))) {
+            const distance = Math.hypot(pointer.x - point.x, pointer.y - point.y);
+            if (distance <= bestDistance) {
+                best = { node, anchorId, point };
+                bestDistance = distance;
+            }
+        }
+    }
+
+    connectorSnapTarget = best ? { nodeId: best.node.id, anchorId: best.anchorId } : null;
+    if (lastSnapTargetAnchor) lastSnapTargetAnchor.classList.remove("snap-target");
+    lastSnapTargetAnchor = null;
+    if (best) {
+        const group = flowchartNodes.querySelector(`.flowchart-node[data-node-id="${best.node.id}"]`);
+        lastSnapTargetAnchor = group?.querySelector(`.connector-anchor-point[data-anchor-id="${best.anchorId}"]`) || null;
+        lastSnapTargetAnchor?.classList.add("snap-target");
+    }
+
+    let toSide = best?.anchorId || "auto";
+    const to = best?.node || {
         id: "__connector_preview__", type: "connection", x: pointer.x, y: pointer.y,
         width: 0, height: 0
     };
-    if (target) {
-        to = target;
-        const anchors = getNodeAnchorPositions(target);
-        toSide = Object.entries(anchors).sort((a,b) =>
-            Math.hypot(a[1].x - pointer.x, a[1].y - pointer.y) - Math.hypot(b[1].x - pointer.x, b[1].y - pointer.y)
-        )[0][0];
-    }
     const route = document.getElementById("flowConnectorRoute").value;
     const geometry = getConnectorGeometry({ fromSide: connectorSourceSide || "auto", toSide, route }, source, to);
     if (!preview) {
@@ -5960,8 +6039,20 @@ function updateConnectorPreview(event) {
         preview.classList.add("flowchart-connector", "connector-preview");
         flowchartConnectors.appendChild(preview);
     }
-    const d = route === "orthogonal" ? geometry.d : "M " + geometry.start.x + " " + geometry.start.y + " L " + geometry.end.x + " " + geometry.end.y;
+    const d = route === "orthogonal"
+        ? geometry.d
+        : `M ${geometry.start.x} ${geometry.start.y} L ${geometry.end.x} ${geometry.end.y}`;
     preview.setAttribute("d", d);
+}
+
+function updateConnectorPreview(event) {
+    pendingConnectorPointer = { x: event.clientX, y: event.clientY };
+    if (connectorPreviewFrame) return;
+    connectorPreviewFrame = requestAnimationFrame(() => {
+        connectorPreviewFrame = 0;
+        const pointer = pendingConnectorPointer;
+        if (pointer) updateConnectorPreviewAt(pointer.x, pointer.y);
+    });
 }
 
 flowchartCanvasWrapper.addEventListener("pointermove", updateConnectorPreview);
@@ -6126,10 +6217,12 @@ function renderFlowConnectors() {
    UPDATE CONNECTORS WITHOUT REBUILDING THEM
 ========================================================= */
 
-function updateAllConnectorGeometry() {
+function updateAllConnectorGeometry(changedNodeIds = null) {
 
     renderFlowTextEditorWire();
 
+    const changed = changedNodeIds ? new Set(changedNodeIds) : null;
+    const connectorsById = new Map(currentProject.flowchart.connectors.map(connector => [connector.id, connector]));
     const lines =
         flowchartConnectors
             .querySelectorAll(
@@ -6140,21 +6233,15 @@ function updateAllConnectorGeometry() {
     lines.forEach(
         line => {
 
-            const connector =
-                currentProject
-                    .flowchart
-                    .connectors
-                    .find(
-                        item =>
-                            item.id
-                            === line.dataset.connectorId
-                    );
+            const connector = connectorsById.get(line.dataset.connectorId);
 
 
             if (!connector) {
 
                 return;
             }
+
+            if (changed && !changed.has(connector.from) && !changed.has(connector.to)) return;
 
 
             const from =
@@ -6205,6 +6292,8 @@ function updateAllConnectorGeometry() {
 
                     return;
                 }
+
+                if (changed && !changed.has(connector.from) && !changed.has(connector.to)) return;
 
 
                 const from =
@@ -6508,7 +6597,7 @@ function deleteFlowSelection() {
 
 function getFlowchartSvgForExport() {
     const svg = flowchartCanvas.cloneNode(true);
-    svg.querySelectorAll(".flow-resize-handle, .connector-anchor, .flow-text-editor-wire").forEach(element => element.remove());
+    svg.querySelectorAll(".flow-resize-handle, .connector-anchor-point, .connector-anchor, .connector-anchor-hit, .flow-text-editor-wire").forEach(element => element.remove());
     const viewport = svg.querySelector("#flowchartViewport");
     let bounds = flowchartViewport.getBBox();
     if (!Number.isFinite(bounds.width) || !Number.isFinite(bounds.height) || !bounds.width || !bounds.height) {
@@ -6536,7 +6625,7 @@ function getFlowchartSvgForExport() {
     const identity = studentId ? " (Student ID: " + studentId + ")" : (username ? " (@" + username + ")" : "");
     stamp.textContent = "Di PseudoFlow Logics • " + (projectTitle.value.trim() || "Untitled Project") + " • By " + owner + identity + " • Work ID " + ensureWorkStamp(currentProject) + " • Exported " + new Date().toLocaleString();
     svg.appendChild(stamp);
-    const transient = element => element.matches(".flow-resize-handle, .connector-anchor");
+    const transient = element => element.matches(".flow-resize-handle, .connector-anchor-point, .connector-anchor, .connector-anchor-hit");
     const sourceElements = [flowchartCanvas, ...flowchartCanvas.querySelectorAll("*")].filter(element => !transient(element));
     const targetElements = [svg, ...svg.querySelectorAll("*")];
     const properties = ["fill", "stroke", "stroke-width", "font-size", "font-family", "text-anchor", "dominant-baseline", "marker-end", "opacity", "vector-effect", "pointer-events", "stroke-dasharray", "stroke-dashoffset", "stroke-linecap", "filter"];
@@ -7614,8 +7703,8 @@ function setFocusMode(enabled){document.getElementById("appRoot").classList.togg
 focusButton.addEventListener("click",()=>setFocusMode(true));
 window.addEventListener("keydown",event=>{if(event.key==="Escape"&&document.body.classList.contains("focus-active"))setFocusMode(false);});
 const sidebarToggle=document.getElementById("sidebarToggle");
-function setSidebarCollapsed(collapsed){document.body.classList.toggle("sidebar-collapsed",collapsed);sidebarToggle.setAttribute("aria-expanded",String(!collapsed));sidebarToggle.setAttribute("aria-label",collapsed?"Expand sidebar":"Collapse sidebar");sidebarToggle.title=collapsed?"Expand sidebar":"Collapse sidebar";localStorage.setItem("dpf-sidebar-collapsed",String(collapsed));}
-setSidebarCollapsed(localStorage.getItem("dpf-sidebar-collapsed")==="false"?false:true);
+function setSidebarCollapsed(collapsed){document.body.classList.toggle("sidebar-collapsed",collapsed);sidebarToggle.setAttribute("aria-expanded",String(!collapsed));sidebarToggle.setAttribute("aria-label",collapsed?"Expand sidebar":"Collapse sidebar");sidebarToggle.title=collapsed?"Expand sidebar":"Collapse sidebar";localStorage.setItem("dpf-sidebar-rail-v3",collapsed?"rail":"open");const labels={navHome:"Home",navProjects:"Projects",navSettings:"Settings",headerHelpButton:"Help"};Object.entries(labels).forEach(([id,label])=>{const item=document.getElementById(id);if(item)item.title=collapsed?label:"";});}
+setSidebarCollapsed(localStorage.getItem("dpf-sidebar-rail-v3")!=="open");
 sidebarToggle.addEventListener("click",()=>setSidebarCollapsed(!document.body.classList.contains("sidebar-collapsed")));
 document.getElementById("chooseProjectsFolder").addEventListener("click",async()=>{const result=await window.diPseudoFlow.chooseProjectsFolder();if(result?.success){document.getElementById("projectsFolderPath").textContent=result.directory;await refreshDashboardRecentProjects();}else if(!result?.canceled)alert(result?.error||"Could not select the project folder.");});
 window.diPseudoFlow.getProjectsFolder().then(result=>{if(result?.success)document.getElementById("projectsFolderPath").textContent=result.directory;}).catch(()=>{});

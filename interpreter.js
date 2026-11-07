@@ -148,7 +148,17 @@ function setEditorStatus(status) {
 const indentGuideMeasureCanvas = document.createElement("canvas");
 const indentGuideMeasureContext = indentGuideMeasureCanvas.getContext("2d");
 
+let indentGuideFrame = 0;
+
 function renderIndentGuides() {
+    if (indentGuideFrame) return;
+    indentGuideFrame = requestAnimationFrame(() => {
+        indentGuideFrame = 0;
+        drawIndentGuidesNow();
+    });
+}
+
+function drawIndentGuidesNow() {
     const svg = document.getElementById("indentGuides");
     const editor = document.getElementById("pseudocode");
     if (!svg || !editor) return;
