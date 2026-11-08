@@ -442,6 +442,7 @@ const highlightKeywords = new Set([
     "of",
     "otherwise",
     "endcase",
+    "break",
     "for",
     "to",
     "step",
@@ -2603,12 +2604,16 @@ function performSyntaxCheck() {
             } else if (activeCase.otherwiseSeen) errors.push({ line: i + 1, message: "CASE arms cannot appear after OTHERWISE." });
             continue;
         }
-        if (lower === "endcase") {
+        if (/^(?:endcase|end\s+case)$/i.test(line)) {
             if (!caseStack.length) errors.push({ line: i + 1, message: "ENDCASE does not have a matching CASE statement." });
             else {
                 const closedCase = caseStack.pop();
                 if (!closedCase.otherwiseSeen) errors.push({ line: closedCase.line, message: "Add an OTHERWISE arm so unmatched values are handled." });
             }
+            continue;
+        }
+        if (lower === "break") {
+            if (!caseStack.length) errors.push({ line: i + 1, message: "BREAK can only be used inside a CASE statement." });
             continue;
         }
 
@@ -3169,7 +3174,7 @@ function findMatchingEndCase(startIndex) {
     for (let i = startIndex; i < programLines.length; i++) {
         const text = caseLineText(i);
         if (parseCaseHeader(text)) depth++;
-        else if (/^endcase$/i.test(text) && --depth === 0) return i;
+        else if (/^(?:endcase|end\s+case)$/i.test(text) && --depth === 0) return i;
     }
     return -1;
 }
@@ -3198,7 +3203,7 @@ function findEnclosingCaseStart(targetIndex) {
     for (let i = 0; i <= targetIndex; i++) {
         const text = caseLineText(i);
         if (parseCaseHeader(text)) openCases.push(i);
-        else if (/^endcase$/i.test(text)) openCases.pop();
+        else if (/^(?:endcase|end\s+case)$/i.test(text)) openCases.pop();
     }
     return openCases.length ? openCases[openCases.length - 1] : -1;
 }
@@ -3211,7 +3216,7 @@ function selectCaseArm(caseIndex, selectorValue) {
     for (let i = caseIndex + 1; i < endIndex; i++) {
         const text = caseLineText(i);
         if (parseCaseHeader(text)) { depth++; continue; }
-        if (/^endcase$/i.test(text)) { depth--; continue; }
+        if (/^(?:endcase|end\s+case)$/i.test(text)) { depth--; continue; }
         if (depth !== 0) continue;
         const arm = parseCaseArm(text);
         if (!arm) continue;
@@ -3359,11 +3364,19 @@ function executeNextLine() {
                 continue;
             }
 
-            if (/^endcase$/i.test(cleanLine)) {
+            if (/^(?:endcase|end\s+case)$/i.test(cleanLine)) {
                 currentLine++;
                 continue;
             }
 
+            if (lower === "break") {
+                const caseStart = findEnclosingCaseStart(currentLine);
+                if (caseStart < 0) throw new Error("BREAK can only be used inside a CASE statement.");
+                const endCase = findMatchingEndCase(caseStart);
+                if (endCase < 0) throw new Error("BREAK is inside a CASE statement without a matching ENDCASE.");
+                currentLine = endCase + 1;
+                continue;
+            }
 
             const declarationMatch =
                 cleanLine.match(
@@ -4338,6 +4351,10 @@ function formatPseudocode() {
             const frame = caseFrames.pop();
             level = frame ? frame.base : Math.max(0, level - 1);
             formatted.push(INDENT.repeat(level) + "endcase");
+            continue;
+        }
+        if (/^break$/i.test(clean)) {
+            formatted.push(INDENT.repeat(level) + "break");
             continue;
         }
 
