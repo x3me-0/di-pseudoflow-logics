@@ -1674,6 +1674,8 @@
                       <button type="button" id="editorRedoButton" title="Redo (Ctrl+Y)">↷ Redo</button>
                       <label for="workspaceLayoutSelect" class="visually-hidden">Pseudocode and output layout</label>
                       <select id="workspaceLayoutSelect" title="Panel layout"><option value="side-by-side">Side by side</option><option value="stacked">Editor + bottom output</option></select>
+                      <label for="editorFontSizeSelect" class="visually-hidden">Pseudocode editor font size</label>
+                      <select id="editorFontSizeSelect" title="Editor font size"><option value="12">Font 12</option><option value="14">Font 14</option><option value="16">Font 16</option><option value="18">Font 18</option><option value="20">Font 20</option></select>
                       <button type="button" id="toggleOutputButton" aria-expanded="true">Hide Output</button>
                       <button type="button" id="focusWorkspaceButton" title="Show only pseudocode and output">⛶ Focus</button>
                     </div>
@@ -2304,7 +2306,7 @@
 ========================================================= */
 
 const DEFAULT_DPF_PREFERENCES = {
-    theme:"dark",accentColor:"#6366f1",editorFontSize:14,uiScale:"default",showLineNumbers:true,autoIndent:false,syntaxHighlighting:true,indentSize:"4",normalizeQuotes:true,
+    theme:"dark",accentColor:"#6366f1",editorFontSize:14,uiScale:"default",showLineNumbers:true,autoIndent:true,syntaxHighlighting:true,indentSize:"4",normalizeQuotes:true,
     showGrid:true,snapToGrid:true,defaultZoom:"1",defaultShapeSize:"default",arrowStyle:"standard",showConnectionPoints:true,stepByStepMode:false,showExecutionMessages:true,clearOutputBeforeRun:true,traceExecution:true,outputWriteSpeed:"0",
     autoSave:false,autoSaveInterval:5,confirmDelete:true,autoCheckUpdates:false,showHomeOnStartup:true,rememberLastWorkspace:true,openLastProject:false,showHomeLogo:true
 };
@@ -5935,6 +5937,37 @@ function getConnectorGeometry(connector, from, to) {
             if (y1 === y2) return y1 > rect.top && y1 < rect.bottom && Math.max(Math.min(x1,x2),rect.left) < Math.min(Math.max(x1,x2),rect.right);
             return true;
         });
+        // Try the simplest orthogonal routes first. The grid search below is
+        // reserved for cases where a nearby shape actually blocks both L paths.
+        // This keeps ordinary tidy layouts to one bend (or a straight run).
+        const simplifyOrthogonal = route => route.filter((point, index) => {
+            if (index === 0 || index === route.length - 1) return true;
+            const before = route[index - 1], after = route[index + 1];
+            return !((before.x === point.x && point.x === after.x) ||
+                (before.y === point.y && point.y === after.y));
+        });
+        const routeClear = route => route.slice(1).every((point, index) =>
+            !segmentBlocked(route[index].x, route[index].y, point.x, point.y));
+        const candidates = [];
+        if (startLead.x === endLead.x || startLead.y === endLead.y) {
+            candidates.push([startLead, endLead]);
+        } else {
+            candidates.push([startLead, { x: startLead.x, y: endLead.y }, endLead]);
+            candidates.push([startLead, { x: endLead.x, y: startLead.y }, endLead]);
+        }
+        const simpleRoute = candidates
+            .map(simplifyOrthogonal)
+            .filter(route => routeClear(route))
+            .sort((a, b) => {
+                const cost = route => route.slice(1).reduce((sum, point, index) =>
+                    sum + Math.abs(point.x - route[index].x) + Math.abs(point.y - route[index].y), 0) + (route.length - 2) * 72;
+                return cost(a) - cost(b);
+            })[0];
+        if (simpleRoute) {
+            const points = simplifyOrthogonal([start, startLead, ...simpleRoute.slice(1, -1), endLead, end]);
+            const d = points.map((point,index)=>(index ? "L " : "M ") + point.x + " " + point.y).join(" ");
+            return { start, end, d, labelX: (start.x + end.x) / 2 + 5, labelY: (start.y + end.y) / 2 - 6 };
+        }
         const keyOf = (ix,iy,dir) => ix + "," + iy + "," + dir;
         const heap = [];
         const heapPush = state => {
@@ -5960,7 +5993,7 @@ function getConnectorGeometry(connector, from, to) {
                 if(ix<0||iy<0||ix>=xs.length||iy>=ys.length)continue;
                 const x1=xs[current.ix],y1=ys[current.iy],x2=xs[ix],y2=ys[iy];
                 if(pointBlocked(x2,y2)||segmentBlocked(x1,y1,x2,y2))continue;
-                const nextKey=keyOf(ix,iy,dir), step=Math.abs(x2-x1)+Math.abs(y2-y1)+(current.dir!=="n"&&current.dir!==dir?32:0), nextCost=current.g+step;
+                const nextKey=keyOf(ix,iy,dir), step=Math.abs(x2-x1)+Math.abs(y2-y1)+(current.dir!=="n"&&current.dir!==dir?72:0), nextCost=current.g+step;
                 if(nextCost>=(costs.get(nextKey)??Infinity))continue;
                 costs.set(nextKey,nextCost);parents.set(nextKey,current.key);
                 const heuristic=Math.abs(x2-endLead.x)+Math.abs(y2-endLead.y);
@@ -7324,7 +7357,7 @@ function activateProfile(profile) {
     document.getElementById("dashboardGreeting").textContent=greetingText()+", "+(profile.firstName || "Guest");
     profileGate.hidden=true; document.getElementById("welcomeScreen").style.display="none";
     try { window.dpfPreferences={...DEFAULT_DPF_PREFERENCES,...JSON.parse(localStorage.getItem(profileSettingsKey())||"{}")} } catch (_) { window.dpfPreferences={...DEFAULT_DPF_PREFERENCES}; }
-    window.dpfPreferences.autoIndent=false;
+    window.dpfPreferences.autoIndent=true;
     applyPreferences(); initializeHome();
 }
 function activateGuest() {
@@ -7417,6 +7450,7 @@ function applyPreferences() {
     const points=document.getElementById("flowchartCanvas"); if(points) points.classList.toggle("hide-connection-points",p.showConnectionPoints===false);
     const marker=document.getElementById("flowArrow"); if(marker){marker.setAttribute("markerWidth",p.arrowStyle==="compact"?"7":"10");marker.setAttribute("markerHeight",p.arrowStyle==="compact"?"7":"10");}
     const editorFontSize=(Number(p.editorFontSize)||14)+"px";
+    const editorFontSizeSelect=document.getElementById("editorFontSizeSelect");if(editorFontSizeSelect)editorFontSizeSelect.value=String(Number(p.editorFontSize)||14);
     const indentSize=String(Math.max(1,Math.min(8,Number(p.indentSize)||4)));
     ["pseudocode","highlightLayer","lineNumbers"].forEach(id=>{const layer=document.getElementById(id);if(layer){layer.style.fontSize=editorFontSize;if(id!=="lineNumbers"){layer.style.tabSize=indentSize;layer.style.MozTabSize=indentSize;}}});
     if(typeof updateEditorVisuals==="function")updateEditorVisuals();
@@ -7424,6 +7458,13 @@ function applyPreferences() {
     if(p.traceExecution===false&&typeof clearExecutionTracker==="function")clearExecutionTracker();
     syncSettingsControls();
 }
+document.getElementById("editorFontSizeSelect").addEventListener("change",event=>{
+    const size=Number(event.currentTarget.value);
+    if(![12,14,16,18,20].includes(size))return;
+    window.dpfPreferences.editorFontSize=size;
+    localStorage.setItem(profileSettingsKey(),JSON.stringify(window.dpfPreferences));
+    applyPreferences();
+});
 
 function showHome() { const app=document.getElementById("appRoot");app.classList.add("home-mode");app.classList.remove("settings-mode","profile-mode");["navHome","navProjects","navSettings","navProfile"].forEach(id=>document.getElementById(id).classList.toggle("active",id==="navHome"));refreshDashboardRecentProjects(); }
 function showSettings() { const app=document.getElementById("appRoot");app.classList.remove("home-mode","profile-mode");app.classList.add("settings-mode");["navHome","navProjects","navSettings","navProfile"].forEach(id=>document.getElementById(id).classList.toggle("active",id==="navSettings"));syncSettingsControls(); }

@@ -150,6 +150,112 @@ const indentGuideMeasureContext = indentGuideMeasureCanvas.getContext("2d");
 
 let indentGuideFrame = 0;
 
+/*
+   The guide scanner intentionally stays separate from syntax checking and
+   highlighting. It only tracks the block words needed for indentation.
+*/
+function getIndentLineEvent(sourceLine) {
+    const line = String(sourceLine || "").replace(/\/\/.*$/, "").trim();
+    const lower = line.toLowerCase();
+    if (!line) return { type: "blank" };
+    if (/^(?:else\s+if\b.*\bthen|elseif\b.*\bthen)$/i.test(line)) return { type: "else-if" };
+    if (/^else\b/i.test(line)) return { type: "else" };
+    if (/^(?:endif|end\s+if)$/i.test(line)) return { type: "close", closes: ["if"] };
+    if (/^(?:endwhile|end\s+while)$/i.test(line)) return { type: "close", closes: ["while"] };
+    if (/^(?:endfor|end\s+for)$/i.test(line)) return { type: "close", closes: ["for"] };
+    if (/^(?:endcase|end\s+case)$/i.test(line)) return { type: "close", closes: ["case"] };
+    if (/^(?:endfunction|end\s+function)$/i.test(line)) return { type: "close", closes: ["function"] };
+    if (/^(?:endprocedure|end\s+procedure)$/i.test(line)) return { type: "close", closes: ["procedure"] };
+    if (/^until\b/i.test(line)) return { type: "close", closes: ["repeat"] };
+    if (/^stop$/i.test(line)) return { type: "close-all" };
+    if (/^end$/i.test(line)) return { type: "close", closes: ["program", "function", "procedure", "if", "while", "for", "repeat", "case", "declare"] };
+    if (/^(?:start(?:\s+.*)?|begin(?:\s+\w+.*)?)$/i.test(line)) return { type: "open", opens: "program" };
+    if (/^declare$/i.test(line)) return { type: "open", opens: "declare" };
+    if (/^if\b.*\bthen\s*$/i.test(line)) return { type: "open", opens: "if" };
+    if (/^while\b.*\bdo\s*$/i.test(line)) return { type: "open", opens: "while" };
+    if (/^for\b.+$/i.test(line)) return { type: "open", opens: "for" };
+    if (/^repeat$/i.test(line)) return { type: "open", opens: "repeat" };
+    if (/^case\s+of\b.+$/i.test(line) || /^case\b.+\bof\s*$/i.test(line)) return { type: "open", opens: "case" };
+    if (/^function\b.+$/i.test(line)) return { type: "open", opens: "function" };
+    if (/^procedure\b.+$/i.test(line)) return { type: "open", opens: "procedure" };
+    if (/^(?:otherwise|default|(?:[-+]?\d+(?:\.\d+)?|"[^"\n]*"|'[^'\n]*'|[A-Za-z_][\w]*)(?:\s*,\s*(?:[-+]?\d+(?:\.\d+)?|"[^"\n]*"|'[^'\n]*'|[A-Za-z_][\w]*))*)\s*:/i.test(line)) return { type: "case-arm" };
+    if (/^[A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*\s+as\s+(?:boolean|character|float|integer|real|string|constant)\b/i.test(line)) return { type: "declaration" };
+    return { type: "statement" };
+}
+
+function closeIndentBlock(stack, types, endLine, segments, indentWidth = 4) {
+    let match = -1;
+    for (let index = stack.length - 1; index >= 0; index -= 1) {
+        if (types.includes(stack[index].type)) { match = index; break; }
+    }
+    if (match < 0) return false;
+    for (let index = stack.length - 1; index >= match; index -= 1) {
+        const block = stack.pop();
+        const firstBodyLine = block.startLine + 1;
+        const lastBodyLine = endLine - 1;
+        if (lastBodyLine >= firstBodyLine) segments.push({ column: block.depth * indentWidth, startLine: firstBodyLine, endLine: lastBodyLine, depth: block.depth });
+    }
+    return true;
+}
+
+function scanPseudocodeIndentStructure(lines, indentWidth = 4) {
+    const stack = [];
+    const segments = [];
+    const pushBlock = (type, lineIndex) => stack.push({ type, startLine: lineIndex, depth: stack.length + 1 });
+
+    lines.forEach((rawLine, lineIndex) => {
+        const event = getIndentLineEvent(rawLine);
+        if (event.type === "blank") return;
+
+        if (stack[stack.length - 1]?.type === "declare" && event.type !== "declaration") {
+            closeIndentBlock(stack, ["declare"], lineIndex, segments, indentWidth);
+        }
+
+        if (event.type === "case-arm" && stack.some(block => block.type === "case")) {
+            closeIndentBlock(stack, ["case-arm"], lineIndex, segments, indentWidth);
+            pushBlock("case-arm", lineIndex);
+            return;
+        }
+
+        if (event.type === "close") {
+            closeIndentBlock(stack, event.closes, lineIndex, segments, indentWidth);
+            return;
+        }
+
+        if (event.type === "close-all") {
+            while (stack.length) closeIndentBlock(stack, stack.map(block => block.type), lineIndex, segments, indentWidth);
+            return;
+        }
+
+        if (event.type === "open") pushBlock(event.opens, lineIndex);
+    });
+
+    const remainingStack = stack.map(block => ({ ...block }));
+    const remainingDepth = remainingStack.length;
+    const endLine = Math.max(0, lines.length - 1);
+    while (stack.length) {
+        const block = stack.pop();
+        const firstBodyLine = block.startLine + 1;
+        if (endLine >= firstBodyLine) segments.push({ column: block.depth * indentWidth, startLine: firstBodyLine, endLine, depth: block.depth });
+    }
+    return { segments, remainingDepth, remainingStack };
+}
+
+function getExpectedIndent(sourceBeforeCursor) {
+    const indentWidth = Math.max(1, Math.min(8, Number(window.dpfPreferences?.indentSize) || 4));
+    const lines = String(sourceBeforeCursor || "").split("\n");
+    const currentLine = lines[lines.length - 1] || "";
+    const currentEvent = getIndentLineEvent(currentLine);
+    const { remainingDepth } = scanPseudocodeIndentStructure(lines, indentWidth);
+    const currentVisualIndent = currentLine.match(/^[ \t]*/)?.[0] || "";
+    let currentColumns = 0;
+    for (const character of currentVisualIndent) currentColumns += character === "\t" ? indentWidth - (currentColumns % indentWidth) : 1;
+    const currentIndentLevel = Math.floor(currentColumns / indentWidth);
+    const isClosingLine = currentEvent.type === "close" || currentEvent.type === "close-all" || currentEvent.type === "else" || currentEvent.type === "else-if";
+    const level = isClosingLine ? remainingDepth : Math.max(remainingDepth, currentIndentLevel);
+    return " ".repeat(Math.max(0, level) * indentWidth);
+}
+
 function renderIndentGuides() {
     if (indentGuideFrame) return;
     indentGuideFrame = requestAnimationFrame(() => {
@@ -179,20 +285,7 @@ function drawIndentGuidesNow() {
     const caret = editor.selectionStart;
     let caretLine = 0;
     for (let index = 0; index < caret; index += 1) if (editor.value[index] === "\n") caretLine += 1;
-    const indentSegments = [];
-    const indentStack = [];
-    let previousIndent = 0;
-    let previousLine = -1;
-
-    function visualIndent(line) {
-        let columns = 0;
-        for (const char of line) {
-            if (char === " ") columns += 1;
-            else if (char === "\t") columns += indentWidth - (columns % indentWidth);
-            else break;
-        }
-        return columns;
-    }
+    const indentSegments = scanPseudocodeIndentStructure(lines, indentWidth).segments;
 
     function visualColumn(line, stop) {
         let columns = 0;
@@ -202,26 +295,9 @@ function drawIndentGuidesNow() {
         return columns;
     }
 
-    lines.forEach((line, index) => {
-        if (!line.trim()) return;
-        const indent = visualIndent(line);
-        while (indentStack.length && indent < indentStack[indentStack.length - 1].level) {
-            const block = indentStack.pop();
-            indentSegments.push({ column: block.level, startLine: block.startLine, endLine: index, active: caretLine >= block.startLine && caretLine <= index });
-        }
-        const knownLevel = indentStack.length ? indentStack[indentStack.length - 1].level : previousIndent;
-        if (indent > knownLevel) {
-            for (let level = knownLevel + indentWidth; level <= indent; level += indentWidth) {
-                indentStack.push({ level, startLine: index });
-            }
-        }
-        previousIndent = indent;
-        previousLine = index;
+    indentSegments.forEach(segment => {
+        segment.active = caretLine >= segment.startLine && caretLine <= segment.endLine;
     });
-    while (indentStack.length) {
-        const block = indentStack.pop();
-        indentSegments.push({ column: block.level, startLine: block.startLine, endLine: Math.max(block.startLine + 1, previousLine + 1), active: caretLine >= block.startLine && caretLine <= previousLine + 1 });
-    }
 
     const bracketSegments = [];
     const bracketStack = [];
@@ -262,7 +338,7 @@ function drawIndentGuidesNow() {
     const isLight = document.body.dataset.theme === "light";
     const inactive = isLight ? "#64748b" : "#94a3b8";
     const active = getComputedStyle(document.documentElement).getPropertyValue("--accent-color").trim() || (isLight ? "#4f46e5" : "#a5b4fc");
-    const seen = new Set();
+    const seen = new Map();
     [...indentSegments, ...bracketSegments].forEach(segment => {
         if (segment.endLine <= segment.startLine) return;
         const x = 18 + segment.column * charWidth - editor.scrollLeft;
@@ -4197,6 +4273,7 @@ function isDeclarationLine(line) {
 
 function formatPseudocode() {
 
+    INDENT = " ".repeat(Math.max(1, Math.min(8, Number(window.dpfPreferences?.indentSize) || 4)));
     const editor =
         document.getElementById(
             "pseudocode"
@@ -4214,6 +4291,7 @@ function formatPseudocode() {
     let inDeclare = false;
     const caseFrames = [];
     const loopIndentFrames = [];
+    const routineIndentFrames = [];
 
 
     for (
@@ -4236,7 +4314,7 @@ function formatPseudocode() {
             clean === ""
         ) {
 
-            formatted.push("");
+            formatted.push(INDENT.repeat(Math.max(0, level)));
 
             continue;
         }
@@ -4256,10 +4334,31 @@ function formatPseudocode() {
             continue;
         }
 
-        if (/^endcase$/i.test(clean)) {
+        if (/^(?:endcase|end\s+case)$/i.test(clean)) {
             const frame = caseFrames.pop();
             level = frame ? frame.base : Math.max(0, level - 1);
             formatted.push(INDENT.repeat(level) + "endcase");
+            continue;
+        }
+
+        const routineEnd = clean.match(/^end\s*(function|procedure)$/i);
+        if (routineEnd) {
+            const type = routineEnd[1].toLowerCase();
+            let frameIndex = routineIndentFrames.length - 1;
+            while (frameIndex >= 0 && routineIndentFrames[frameIndex].type !== type) frameIndex--;
+            const frame = frameIndex >= 0 ? routineIndentFrames.splice(frameIndex, 1)[0] : null;
+            level = frame ? frame.base : Math.max(0, level - 1);
+            formatted.push(INDENT.repeat(level) + `end ${type}`);
+            continue;
+        }
+
+        const routineStart = clean.match(/^(function|procedure)\b([\s\S]*)$/i);
+        if (routineStart) {
+            if (inDeclare) { inDeclare = false; level = Math.max(1, level - 1); }
+            const type = routineStart[1].toLowerCase();
+            formatted.push(INDENT.repeat(level) + type + routineStart[2]);
+            routineIndentFrames.push({ type, base: level });
+            level++;
             continue;
         }
 
@@ -4297,8 +4396,8 @@ function formatPseudocode() {
             level++;
             continue;
         }
-        if (/^endfor$/i.test(clean) || /^endwhile$/i.test(clean)) {
-            const expected = /^endfor$/i.test(clean) ? "for" : "while";
+        if (/^(?:endfor|end\s+for|endwhile|end\s+while)$/i.test(clean)) {
+            const expected = /for$/i.test(clean) ? "for" : "while";
             let frameIndex = loopIndentFrames.length - 1;
             while (frameIndex >= 0 && loopIndentFrames[frameIndex].type !== expected) frameIndex--;
             const frame = frameIndex >= 0 ? loopIndentFrames.splice(frameIndex, 1)[0] : null;
@@ -4562,72 +4661,9 @@ function formatPseudocode() {
    AUTO INDENT ON ENTER
 ========================================================= */
 
-function autoIndentAfterEnter(
-    previousLine
-) {
-
-    const trimmed =
-        previousLine.trim();
-
-
-    const currentIndent =
-        previousLine.match(
-            /^[ \t]*/
-        );
-
-
-    let indent =
-        currentIndent
-            ? currentIndent[0]
-            : "";
-
-
-    const lower =
-        trimmed.toLowerCase();
-
-    if (/^case\s+.+\s+of$/i.test(trimmed) || /^(otherwise|.+):$/i.test(trimmed)) {
-        indent += INDENT;
-    }
-
-
-    /*
-       IF starts a new block.
-    */
-
-    if (
-        (lower.startsWith("if ") || lower.startsWith("else if ")) &&
-        lower.endsWith(" then")
-    ) {
-
-        indent += INDENT;
-    }
-
-
-    /*
-       DECLARE starts declaration block.
-    */
-
-    else if (
-        lower === "declare"
-    ) {
-
-        indent += INDENT;
-    }
-
-
-    /*
-       ELSE starts its own body.
-    */
-
-    else if (
-        lower === "else"
-    ) {
-
-        indent += INDENT;
-    }
-
-
-    return indent;
+function autoIndentAfterEnter(sourceBeforeCursor) {
+    INDENT = " ".repeat(Math.max(1, Math.min(8, Number(window.dpfPreferences?.indentSize) || 4)));
+    return getExpectedIndent(sourceBeforeCursor);
 }
 
 
@@ -4636,225 +4672,43 @@ function autoIndentAfterEnter(
 ========================================================= */
 
 function adjustCurrentLineIndent() {
+    const editor = document.getElementById("pseudocode");
+    const cursor = editor.selectionStart;
+    const lineStart = editor.value.lastIndexOf("\n", cursor - 1) + 1;
+    const lineEnd = editor.value.indexOf("\n", cursor);
+    const actualEnd = lineEnd < 0 ? editor.value.length : lineEnd;
+    const currentLine = editor.value.slice(lineStart, actualEnd);
+    const event = getIndentLineEvent(currentLine);
+    if (event.type !== "close" && event.type !== "close-all" && event.type !== "else" && event.type !== "else-if") return;
 
-    const editor =
-        document.getElementById(
-            "pseudocode"
-        );
-
-
-    const cursor =
-        editor.selectionStart;
-
-
-    const beforeCursor =
-        editor.value.substring(
-            0,
-            cursor
-        );
-
-
-    const lineStart =
-        beforeCursor.lastIndexOf(
-            "\n"
-        ) + 1;
-
-
-    const lineEnd =
-        editor.value.indexOf(
-            "\n",
-            cursor
-        );
-
-
-    const actualEnd =
-        lineEnd === -1
-            ? editor.value.length
-            : lineEnd;
-
-
-    const currentLine =
-        editor.value.substring(
-            lineStart,
-            actualEnd
-        );
-
-
-    const trimmed =
-        currentLine.trim();
-
-
-    if (!["else", "endif", "end if"].includes(trimmed.toLowerCase()) && !/^else\s+if\b/i.test(trimmed)) {
-
-        return;
+    INDENT = " ".repeat(Math.max(1, Math.min(8, Number(window.dpfPreferences?.indentSize) || 4)));
+    const prefixLines = editor.value.slice(0, lineStart).split("\n");
+    const indentState = scanPseudocodeIndentStructure(prefixLines, INDENT.length);
+    const stack = indentState.remainingStack;
+    let desiredLevel = stack.length;
+    if (event.type === "else" || event.type === "else-if") {
+        let activeIfIndex = -1;
+        for (let index = stack.length - 1; index >= 0; index -= 1) if (stack[index].type === "if") { activeIfIndex = index; break; }
+        if (activeIfIndex < 0) return;
+        desiredLevel = activeIfIndex;
+    } else {
+        if (event.type === "close-all") {
+            while (stack.length) closeIndentBlock(stack, stack.map(block => block.type), actualEnd, [], INDENT.length);
+        } else {
+            closeIndentBlock(stack, event.closes, actualEnd, [], INDENT.length);
+        }
+        desiredLevel = stack.length;
     }
 
-
-    const beforeLine =
-        editor.value.substring(
-            0,
-            lineStart
-        );
-
-
-    const previousLines =
-        beforeLine.split("\n");
-
-
-    let level = 0;
-
-    let inDeclare = false;
-
-
-    for (
-        let i = 0;
-        i < previousLines.length;
-        i++
-    ) {
-
-        const line =
-            previousLines[i].trim();
-
-
-        const lower =
-            line.toLowerCase();
-
-
-        if (
-            line === ""
-        ) {
-
-            continue;
-        }
-
-
-        if (
-            lower === "start"
-        ) {
-
-            level = 1;
-
-            inDeclare = false;
-
-            continue;
-        }
-
-
-        if (
-            lower === "declare"
-        ) {
-
-            level++;
-
-            inDeclare = true;
-
-            continue;
-        }
-
-
-        if (
-            inDeclare &&
-            isDeclarationLine(
-                line
-            )
-        ) {
-
-            continue;
-        }
-
-
-        if (
-            inDeclare
-        ) {
-
-            level =
-                Math.max(
-                    1,
-                    level - 1
-                );
-
-            inDeclare = false;
-        }
-
-
-        if ((lower.startsWith("if ") || lower.startsWith("else if ")) && lower.endsWith(" then")) {
-
-            level++;
-
-            continue;
-        }
-
-
-        if (
-            lower === "else"
-        ) {
-
-            continue;
-        }
-
-
-        if (
-        lower === "endif" || lower === "end if"
-        ) {
-
-            level =
-                Math.max(
-                    1,
-                    level - 1
-                );
-        }
-    }
-
-
-    const desiredLevel =
-        trimmed.toLowerCase() === "endif"
-            ? Math.max(1, level - 1)
-            : Math.max(1, level - 1);
-
-
-    const newIndent =
-        INDENT.repeat(
-            desiredLevel
-        );
-
-
-    const newLine =
-        newIndent +
-        trimmed;
-
-
-    const oldLength =
-        currentLine.length;
-
-
-    editor.value =
-        editor.value.substring(
-            0,
-            lineStart
-        ) +
-        newLine +
-        editor.value.substring(
-            actualEnd
-        );
-
-    const difference =
-        newLine.length -
-        oldLength;
-
-
-    editor.selectionStart =
-        Math.max(
-            lineStart +
-            newIndent.length,
-            cursor + difference
-        );
-
-
-    editor.selectionEnd =
-        editor.selectionStart;
-
+    const newIndent = INDENT.repeat(Math.max(0, desiredLevel));
+    const newLine = newIndent + currentLine.trimStart();
+    if (newLine === currentLine) return;
+    const updatedValue = editor.value.slice(0, lineStart) + newLine + editor.value.slice(actualEnd);
+    const shift = newLine.length - currentLine.length;
+    editor.value = updatedValue;
+    editor.selectionStart = Math.max(lineStart + newIndent.length, cursor + shift);
+    editor.selectionEnd = Math.max(editor.selectionStart, editor.selectionEnd + shift);
     window.recordPseudocodeChange?.("command");
-
     updateEditorVisuals();
 }
 
@@ -5225,13 +5079,7 @@ editor.addEventListener(
                 ) + 1;
 
 
-            const previousLine =
-                before.substring(
-                    currentLineStart
-                );
-
-
-            const indent = "";
+            const indent = autoIndentAfterEnter(before);
 
 
             editor.value =
@@ -5283,7 +5131,7 @@ editor.addEventListener(
         setTimeout(
             function () {
 
-                if (window.dpfPreferences?.autoIndent !== false) adjustCurrentLineIndent();
+                adjustCurrentLineIndent();
 
             },
             0
