@@ -346,7 +346,7 @@ ipcMain.handle("export:pdf", async (_event, options = {}) => {
         const escapeHtml = value => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
         const pages = [];
         if (includePseudocode) {
-            pages.push('<section class="code-export"><h1>' + escapeHtml(safeTitle) + '</h1><p class="work-stamp">' + escapeHtml(stamp) + '</p><h2>Pseudocode</h2><pre>' + escapeHtml(pseudocode) + '</pre></section>');
+            pages.push('<section class="code-export"><header class="document-title"><h1>' + escapeHtml(safeTitle) + '</h1><p>Pseudocode project export</p></header><p class="work-stamp">' + escapeHtml(stamp) + '</p><h2>Pseudocode</h2><pre>' + escapeHtml(pseudocode) + '</pre></section>');
         }
 
         if (includeFlowchart) {
@@ -358,13 +358,14 @@ ipcMain.handle("export:pdf", async (_event, options = {}) => {
             const heightMatch = svg.match(/<svg\b[^>]*\bheight="([\d.]+)"/i);
             const chartWidth = Math.max(1, Number(widthMatch?.[1]) || 1);
             const chartHeight = Math.max(1, Number(heightMatch?.[1]) || 1);
-            const tileWidth = 273 / 25.4 * 96;
-            const tileHeight = 178 / 25.4 * 96;
+            // Letter page content area after the 0.5in print margins.
+            const tileWidth = 190.5 / 25.4 * 96;
+            const tileHeight = 246 / 25.4 * 96;
             const overlap = 40;
             const svgForView = (x, y, w, h) => '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="' + x + ' ' + y + ' ' + w + ' ' + h + '" preserveAspectRatio="xMidYMid meet" style="background-color:#0b1120">' + svgBody + '</svg>';
 
             if (flowLayout === "fit") {
-                pages.push('<section class="chart-page last' + (includePseudocode ? " chart-start" : "") + '"><div class="chart-page-label">Flowchart — complete overview (scaled to one page)</div><div class="chart-frame">' + svgForView(0, 0, chartWidth, chartHeight) + '</div></section>');
+                pages.push('<section class="chart-page last' + (includePseudocode ? " chart-start" : "") + '"><div class="chart-page-label"><strong>' + escapeHtml(safeTitle) + ' - Flowchart</strong><span>Complete overview, fitted to one page</span></div><div class="chart-frame">' + svgForView(0, 0, chartWidth, chartHeight) + '</div></section>');
             } else {
                 const makeStarts = (total, span) => {
                     if (total <= span + overlap) return [0];
@@ -383,7 +384,7 @@ ipcMain.handle("export:pdf", async (_event, options = {}) => {
                 let pageNumber = 0;
                 yStarts.forEach((y, row) => xStarts.forEach((x, column) => {
                     pageNumber++;
-                    const label = 'Flowchart — page ' + pageNumber + ' of ' + totalPages + ' (row ' + (row + 1) + ', column ' + (column + 1) + '; pages overlap slightly)';
+                    const label = escapeHtml(safeTitle) + ' - Flowchart · Page ' + pageNumber + ' of ' + totalPages + ' (row ' + (row + 1) + ', column ' + (column + 1) + '; slight overlap)';
                     const lastClass = (pageNumber === totalPages ? ' last' : '') + (pageNumber === 1 && includePseudocode ? ' chart-start' : '');
                     const viewWidth = xStarts.length === 1 ? Math.max(tileWidth, chartWidth) : tileWidth;
                     const viewHeight = yStarts.length === 1 ? Math.max(tileHeight, chartHeight) : tileHeight;
@@ -393,10 +394,10 @@ ipcMain.handle("export:pdf", async (_event, options = {}) => {
         }
 
         const html = '<!doctype html><html><head><meta charset="utf-8"><style>' +
-            '@page{size:A4 landscape;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;color:#111827;font-family:Arial,sans-serif}' +
-            '.code-export{padding:0 0 8mm}.code-export h1{font-size:20pt;margin:0 0 3mm}.code-export h2{font-size:14pt;margin:6mm 0 3mm}.work-stamp{font-size:8pt;color:#475569;margin:0 0 5mm;overflow-wrap:anywhere}' +
-            '.code-export pre{font:10pt/1.45 Consolas,"Courier New",monospace;white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4;margin:0;color:#111827}' +
-            '.chart-page{width:273mm;height:186mm;overflow:hidden;display:flex;flex-direction:column;break-after:page;page-break-after:always}.chart-page.last{break-after:auto;page-break-after:auto}.chart-page-label{height:8mm;flex:0 0 8mm;font-size:8pt;color:#334155;padding:0 0 1.5mm}.chart-frame{width:273mm;height:178mm;flex:0 0 178mm}.chart-frame svg{display:block;width:100%;height:100%}' +
+            '@page{size:Letter portrait;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;color:#111827;font-family:Arial,sans-serif}' +
+            '.document-title{text-align:center;margin:8mm 0 9mm}.document-title h1{font-size:22pt;color:#17324d;margin:0 0 2mm}.document-title p{font-size:10pt;color:#526b83;margin:0}.code-export{padding:0 0 6mm}.code-export h2{font-size:14pt;margin:0 0 3mm}.work-stamp{font-size:8pt;color:#475569;margin:0 0 5mm;overflow-wrap:anywhere}' +
+            '.code-export pre{font:9pt/1.38 Consolas,"Courier New",monospace;white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4;margin:0;color:#111827}' +
+            '.chart-page{width:190.5mm;height:254mm;overflow:hidden;display:flex;flex-direction:column;break-after:page;page-break-after:always}.chart-page.last{break-after:auto;page-break-after:avoid}.chart-page-label{height:8mm;flex:0 0 8mm;display:flex;justify-content:space-between;gap:6mm;font-size:8pt;color:#334155;padding:0 0 1.5mm}.chart-frame{width:190.5mm;height:246mm;flex:0 0 246mm}.chart-frame svg{display:block;width:100%;height:100%}' +
             '.chart-page.chart-start{break-before:page;page-break-before:always}' +
             '</style></head><body>' + pages.join("") + '</body></html>';
         pdfWindow = new BrowserWindow({ show: false, width: 1200, height: 850, webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false } });
@@ -404,7 +405,9 @@ ipcMain.handle("export:pdf", async (_event, options = {}) => {
         pdfTempFile = path.join(pdfTempDirectory, "export.html");
         fs.writeFileSync(pdfTempFile, html, "utf8");
         await pdfWindow.loadFile(pdfTempFile);
-        const pdf = await pdfWindow.webContents.printToPDF({ printBackground: true, pageSize: "A4", landscape: true, margins: { top: 0.4724, bottom: 0.4724, left: 0.4724, right: 0.4724 } });
+        const sectionLabel = content === "both" ? "Pseudocode and Flowchart" : (content === "pseudocode" ? "Pseudocode" : "Flowchart");
+        const footerTemplate = '<div style="width:100%;font:8px Arial,sans-serif;color:#64748b;padding:0 12mm;display:flex;justify-content:space-between"><span>' + escapeHtml(safeTitle) + ' | ' + sectionLabel + '</span><span><span class="pageNumber"></span></span></div>';
+        const pdf = await pdfWindow.webContents.printToPDF({ printBackground: true, displayHeaderFooter: true, headerTemplate: "<div></div>", footerTemplate, pageSize: "Letter", landscape: false, preferCSSPageSize: true, margins: { top: 0.5, bottom: 0.5, left: 0.5, right: 0.5 } });
         fs.writeFileSync(target.filePath, pdf);
         return { success: true, filePath: target.filePath };
     } catch (error) {

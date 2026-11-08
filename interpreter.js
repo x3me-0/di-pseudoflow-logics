@@ -179,6 +179,7 @@ function getIndentLineEvent(sourceLine) {
     if (/^function\b.+$/i.test(line)) return { type: "open", opens: "function" };
     if (/^procedure\b.+$/i.test(line)) return { type: "open", opens: "procedure" };
     if (/^(?:otherwise|default|(?:[-+]?\d+(?:\.\d+)?|"[^"\n]*"|'[^'\n]*'|[A-Za-z_][\w]*)(?:\s*,\s*(?:[-+]?\d+(?:\.\d+)?|"[^"\n]*"|'[^'\n]*'|[A-Za-z_][\w]*))*)\s*:/i.test(line)) return { type: "case-arm" };
+    if (/^const\s+[A-Za-z_][A-Za-z0-9_]*(?:\s+as\s+(?:boolean|character|float|integer|real|string))?(?:\s*=\s*.+)?$/i.test(line)) return { type: "declaration" };
     if (/^[A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*\s+as\s+(?:boolean|character|float|integer|real|string|constant)\b/i.test(line)) return { type: "declaration" };
     return { type: "statement" };
 }
@@ -427,6 +428,13 @@ const highlightKeywords = new Set([
     "start",
     "stop",
     "declare",
+    "const",
+    "uppercase",
+    "upper",
+    "touppercase",
+    "lowercase",
+    "lower",
+    "tolowercase",
     "print",
     "output",
     "read",
@@ -702,10 +710,12 @@ function highlightCodeLine(line, activeIdentifier = null) {
 function getDeclaredVariableNames(source) {
     const names = new Set();
     const declarationPattern = /^\s*([A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*)\s+as\s+(?:boolean|character|float|integer|real|string|constant)\b/gim;
+    const constPattern = /^\s*const\s+([A-Za-z_][A-Za-z0-9_]*)/gim;
     let match;
     while ((match = declarationPattern.exec(source))) {
         match[1].split(",").forEach(name => names.add(name.trim()));
     }
+    while ((match = constPattern.exec(source))) names.add(match[1]);
     return Array.from(names);
 }
 
@@ -1412,6 +1422,11 @@ function checkPrintSyntax(line) {
 }
 
 
+function parseConstDeclaration(line) {
+    const match = String(line || "").trim().match(/^const\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s+as\s+(boolean|character|float|integer|real|string))?(?:\s*=\s*(.+))?$/i);
+    return match ? { name: match[1], expectedType: match[2]?.toLowerCase() || null, initialValue: match[3] } : null;
+}
+
 /* =========================================================
    DECLARATION CHECK
 ========================================================= */
@@ -1421,6 +1436,13 @@ function checkDeclarationSyntax(line) {
     const declaration =
         line.trim();
 
+    const constDeclaration = parseConstDeclaration(declaration);
+    if (constDeclaration) {
+        const nameError = validateVariableName(constDeclaration.name);
+        if (nameError) return nameError;
+        if (constDeclaration.expectedType && !isValidDataType(constDeclaration.expectedType)) return "Invalid constant data type.";
+        return null;
+    }
 
     const match =
         declaration.match(
@@ -1692,7 +1714,8 @@ function replaceVariablesForDisplay(
 
 
         if (
-            variable.type === "string"
+            variable.type === "string" ||
+            typeof variable.value === "string"
         ) {
 
             displayValue =
@@ -1710,7 +1733,8 @@ function replaceVariablesForDisplay(
                 "'";
 
         } else if (
-            variable.type === "boolean"
+            variable.type === "boolean" ||
+            typeof variable.value === "boolean"
         ) {
 
             displayValue =
@@ -1763,6 +1787,18 @@ function evaluateExpression(
             "-"
         );
 
+    const stringFunction = expression.match(/^(uppercase|upper|touppercase|lowercase|lower|tolowercase)\s*\(([\s\S]*)\)$/i);
+    if (stringFunction) {
+        const value = evaluateExpression(stringFunction[2], excludeVariable);
+        if (typeof value !== "string") throw new Error("Uppercase and lowercase conversions require a string value.");
+        return /^(?:uppercase|upper|touppercase)$/i.test(stringFunction[1]) ? value.toUpperCase() : value.toLowerCase();
+    }
+    const stringMethod = expression.match(/^([\s\S]+?)\s*\.\s*(toUpperCase|toLowerCase)\s*\(\s*\)$/i);
+    if (stringMethod) {
+        const value = evaluateExpression(stringMethod[1], excludeVariable);
+        if (typeof value !== "string") throw new Error("toUpperCase() and toLowerCase() require a string value.");
+        return /^toUpperCase$/i.test(stringMethod[2]) ? value.toUpperCase() : value.toLowerCase();
+    }
 
     if (
         /^true$/i.test(
@@ -1892,7 +1928,8 @@ function evaluateExpression(
 
         if (
             variable.type === "string" ||
-            variable.type === "character"
+            variable.type === "character" ||
+            typeof variable.value === "string"
         ) {
 
             const escapedValue =
@@ -1915,7 +1952,8 @@ function evaluateExpression(
                 '"';
 
         } else if (
-            variable.type === "boolean"
+            variable.type === "boolean" ||
+            typeof variable.value === "boolean"
         ) {
 
             replacement =
@@ -2797,9 +2835,8 @@ function performSyntaxCheck() {
 
 
         if (
-            /\bas\s+(boolean|character|float|integer|real|string|constant)\b/i.test(
-                line
-            )
+            /^const\b/i.test(line) ||
+            /\bas\s+(boolean|character|float|integer|real|string|constant)\b/i.test(line)
         ) {
 
             const declarationError =
@@ -3378,6 +3415,23 @@ function executeNextLine() {
                 continue;
             }
 
+            const constDeclaration = parseConstDeclaration(cleanLine);
+            if (constDeclaration) {
+                const name = constDeclaration.name;
+                const nameError = validateVariableName(name);
+                if (nameError) throw new Error(nameError);
+                if (variables[name]) throw new Error("Variable '" + name + "' has already been declared.");
+                let value;
+                const initialized = constDeclaration.initialValue !== undefined;
+                if (initialized) {
+                    value = evaluateExpression(constDeclaration.initialValue);
+                    validateValueForType(value, constDeclaration.expectedType || "constant");
+                }
+                variables[name] = { type: "constant", declaredType: constDeclaration.expectedType, value, initialized };
+                currentLine++;
+                continue;
+            }
+
             const declarationMatch =
                 cleanLine.match(
                     /^(.+?)\s+as\s+(boolean|character|float|integer|real|string|constant)(?:\s*=\s*(.+))?$/i
@@ -3868,35 +3922,15 @@ function executeNextLine() {
                 }
 
 
-                if (
-                    variables[
-                        variableName
-                    ].type === "constant"
-                ) {
-
-                    throw new Error(
-                        "Constant '" +
-                        variableName +
-                        "' cannot be changed."
-                    );
+                const targetVariable = variables[variableName];
+                if (targetVariable.type === "constant" && targetVariable.initialized !== false) {
+                    throw new Error("Constant '" + variableName + "' cannot be changed.");
                 }
 
-
                 const value = evaluateExpression(expression);
-
-
-                validateValueForType(
-                    value,
-                    variables[
-                        variableName
-                    ].type
-                );
-
-
-                variables[
-                    variableName
-                ].value =
-                    value;
+                validateValueForType(value, targetVariable.declaredType || targetVariable.type);
+                targetVariable.value = value;
+                if (targetVariable.type === "constant") targetVariable.initialized = true;
 
 
                 if (
@@ -4248,10 +4282,8 @@ function getIndentLevel(line) {
 
 
 function isDeclarationLine(line) {
-
-    return /\bas\s+(boolean|character|float|integer|real|string|constant)\b/i.test(
-        line.trim()
-    );
+    const text = String(line || "").trim();
+    return /^const\b/i.test(text) || /\bas\s+(boolean|character|float|integer|real|string|constant)\b/i.test(text);
 }
 
 
@@ -4506,6 +4538,13 @@ function formatPseudocode() {
             )
         ) {
 
+            const constDeclaration = parseConstDeclaration(clean);
+            if (constDeclaration) {
+                formatted.push(INDENT.repeat(level) + "const " + constDeclaration.name +
+                    (constDeclaration.expectedType ? " as " + constDeclaration.expectedType : "") +
+                    (constDeclaration.initialValue !== undefined ? " = " + constDeclaration.initialValue : ""));
+                continue;
+            }
             const declaration = clean.match(/^(.+?)\s+as\s+(boolean|character|float|integer|real|string|constant)\b([\s\S]*)$/i);
             if (declaration) {
                 const invalidName = declaration[1].split(",").map(name => name.trim()).find(name => validateVariableName(name));
