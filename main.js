@@ -404,7 +404,7 @@ ipcMain.handle("export:pdf", async (_event, options = {}) => {
         pdfTempFile = path.join(pdfTempDirectory, "export.html");
         fs.writeFileSync(pdfTempFile, html, "utf8");
         await pdfWindow.loadFile(pdfTempFile);
-        const pdf = await pdfWindow.webContents.printToPDF({ printBackground: true, pageSize: "A4", landscape: true, margins: { marginType: "custom", top: 34, bottom: 34, left: 34, right: 34 } });
+        const pdf = await pdfWindow.webContents.printToPDF({ printBackground: true, pageSize: "A4", landscape: true, margins: { top: 0.4724, bottom: 0.4724, left: 0.4724, right: 0.4724 } });
         fs.writeFileSync(target.filePath, pdf);
         return { success: true, filePath: target.filePath };
     } catch (error) {
