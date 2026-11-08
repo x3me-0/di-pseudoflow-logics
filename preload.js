@@ -10,7 +10,7 @@ contextBridge.exposeInMainWorld("diPseudoFlow", {
         ipcRenderer.on("app:update-status", listener);
         return () => ipcRenderer.removeListener("app:update-status", listener);
     },
-    exportPdf: (svg, title) => ipcRenderer.invoke("export:pdf", { svg, title }),
+    exportPdf: (options) => ipcRenderer.invoke("export:pdf", options),
 
     // Local profile accounts (passwords are hashed in the main process)
     listProfiles: () => ipcRenderer.invoke("profile:list"),

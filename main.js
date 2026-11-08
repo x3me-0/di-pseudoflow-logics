@@ -322,21 +322,89 @@ ipcMain.handle("app:check-for-updates", async () => {
     }
 });
 
-ipcMain.handle("export:pdf", async (_event, { svg, title } = {}) => {
+ipcMain.handle("export:pdf", async (_event, options = {}) => {
     let pdfWindow;
+    let pdfTempDirectory = null;
+    let pdfTempFile = null;
     try {
-        if (typeof svg !== "string" || !svg.includes("<svg")) throw new Error("No flowchart image was provided.");
-        const safeTitle = String(title || "Flowchart").replace(/[<>:"\/\\|?*]/g, "-").slice(0, 100);
+        const { svg = "", pseudocode = "", title = "Untitled Project", stamp = "", content = "both", flowLayout = "tile" } = options || {};
+        if (!["both", "pseudocode", "flowchart"].includes(content)) throw new Error("Choose pseudocode, flowchart, or both for the PDF.");
+        const includePseudocode = content !== "flowchart";
+        const includeFlowchart = content !== "pseudocode";
+        if (includeFlowchart && (typeof svg !== "string" || !/<svg\b/i.test(svg))) throw new Error("No flowchart image was provided.");
+        if (includePseudocode && typeof pseudocode !== "string") throw new Error("Pseudocode could not be read.");
+
+        const safeTitle = String(title || "Untitled Project").replace(/[<>:"\/\\|?*]/g, "-").slice(0, 100);
+        const suffix = content === "both" ? "pseudocode-flowchart" : content;
         const target = await dialog.showSaveDialog(mainWindow, {
-            title: "Export Flowchart as PDF",
-            defaultPath: path.join(app.getPath("downloads"), `${safeTitle}.pdf`),
+            title: "Export Project as PDF",
+            defaultPath: path.join(app.getPath("downloads"), safeTitle + "-" + suffix + ".pdf"),
             filters: [{ name: "PDF document", extensions: ["pdf"] }]
         });
         if (target.canceled || !target.filePath) return { success: false, canceled: true };
-        const html = `<!doctype html><html><head><meta charset="utf-8"><style>@page{size:A4 landscape;margin:12mm}html,body{margin:0;background:#0b1120}svg{display:block;width:100%;height:auto;max-height:180mm;object-fit:contain}</style></head><body>${svg}</body></html>`;
+
+        const escapeHtml = value => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+        const pages = [];
+        if (includePseudocode) {
+            pages.push('<section class="code-export"><h1>' + escapeHtml(safeTitle) + '</h1><p class="work-stamp">' + escapeHtml(stamp) + '</p><h2>Pseudocode</h2><pre>' + escapeHtml(pseudocode) + '</pre></section>');
+        }
+
+        if (includeFlowchart) {
+            const match = svg.match(/<svg\b[^>]*>([\s\S]*?)<\/svg\s*>/i);
+            if (!match) throw new Error("The flowchart image could not be prepared.");
+            const svgBody = match[1];
+
+            const widthMatch = svg.match(/<svg\b[^>]*\bwidth="([\d.]+)"/i);
+            const heightMatch = svg.match(/<svg\b[^>]*\bheight="([\d.]+)"/i);
+            const chartWidth = Math.max(1, Number(widthMatch?.[1]) || 1);
+            const chartHeight = Math.max(1, Number(heightMatch?.[1]) || 1);
+            const tileWidth = 273 / 25.4 * 96;
+            const tileHeight = 178 / 25.4 * 96;
+            const overlap = 40;
+            const svgForView = (x, y, w, h) => '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="' + x + ' ' + y + ' ' + w + ' ' + h + '" preserveAspectRatio="xMidYMid meet" style="background-color:#0b1120">' + svgBody + '</svg>';
+
+            if (flowLayout === "fit") {
+                pages.push('<section class="chart-page last' + (includePseudocode ? " chart-start" : "") + '"><div class="chart-page-label">Flowchart — complete overview (scaled to one page)</div><div class="chart-frame">' + svgForView(0, 0, chartWidth, chartHeight) + '</div></section>');
+            } else {
+                const makeStarts = (total, span) => {
+                    if (total <= span + overlap) return [0];
+                    const starts = [0];
+                    while (starts[starts.length - 1] + span < total) {
+                        const last = starts[starts.length - 1];
+                        let next = last + span - overlap;
+                        if (next + span >= total) next = Math.max(last + 1, total - span);
+                        starts.push(next);
+                    }
+                    return starts;
+                };
+                const xStarts = makeStarts(chartWidth, tileWidth);
+                const yStarts = makeStarts(chartHeight, tileHeight);
+                const totalPages = xStarts.length * yStarts.length;
+                let pageNumber = 0;
+                yStarts.forEach((y, row) => xStarts.forEach((x, column) => {
+                    pageNumber++;
+                    const label = 'Flowchart — page ' + pageNumber + ' of ' + totalPages + ' (row ' + (row + 1) + ', column ' + (column + 1) + '; pages overlap slightly)';
+                    const lastClass = (pageNumber === totalPages ? ' last' : '') + (pageNumber === 1 && includePseudocode ? ' chart-start' : '');
+                    const viewWidth = xStarts.length === 1 ? Math.max(tileWidth, chartWidth) : tileWidth;
+                    const viewHeight = yStarts.length === 1 ? Math.max(tileHeight, chartHeight) : tileHeight;
+                    pages.push('<section class="chart-page' + lastClass + '"><div class="chart-page-label">' + label + '</div><div class="chart-frame">' + svgForView(x, y, viewWidth, viewHeight) + '</div></section>');
+                }));
+            }
+        }
+
+        const html = '<!doctype html><html><head><meta charset="utf-8"><style>' +
+            '@page{size:A4 landscape;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;color:#111827;font-family:Arial,sans-serif}' +
+            '.code-export{padding:0 0 8mm}.code-export h1{font-size:20pt;margin:0 0 3mm}.code-export h2{font-size:14pt;margin:6mm 0 3mm}.work-stamp{font-size:8pt;color:#475569;margin:0 0 5mm;overflow-wrap:anywhere}' +
+            '.code-export pre{font:10pt/1.45 Consolas,"Courier New",monospace;white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4;margin:0;color:#111827}' +
+            '.chart-page{width:273mm;height:186mm;overflow:hidden;display:flex;flex-direction:column;break-after:page;page-break-after:always}.chart-page.last{break-after:auto;page-break-after:auto}.chart-page-label{height:8mm;flex:0 0 8mm;font-size:8pt;color:#334155;padding:0 0 1.5mm}.chart-frame{width:273mm;height:178mm;flex:0 0 178mm}.chart-frame svg{display:block;width:100%;height:100%}' +
+            '.chart-page.chart-start{break-before:page;page-break-before:always}' +
+            '</style></head><body>' + pages.join("") + '</body></html>';
         pdfWindow = new BrowserWindow({ show: false, width: 1200, height: 850, webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false } });
-        await pdfWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
-        const pdf = await pdfWindow.webContents.printToPDF({ printBackground: true, pageSize: "A4", landscape: true, margins: { marginType: "custom", top: 36, bottom: 36, left: 36, right: 36 } });
+        pdfTempDirectory = fs.mkdtempSync(path.join(app.getPath("temp"), "di-pseudoflow-pdf-"));
+        pdfTempFile = path.join(pdfTempDirectory, "export.html");
+        fs.writeFileSync(pdfTempFile, html, "utf8");
+        await pdfWindow.loadFile(pdfTempFile);
+        const pdf = await pdfWindow.webContents.printToPDF({ printBackground: true, pageSize: "A4", landscape: true, margins: { marginType: "custom", top: 34, bottom: 34, left: 34, right: 34 } });
         fs.writeFileSync(target.filePath, pdf);
         return { success: true, filePath: target.filePath };
     } catch (error) {
@@ -344,9 +412,14 @@ ipcMain.handle("export:pdf", async (_event, { svg, title } = {}) => {
         return { success: false, error: error?.message || "Unable to export PDF." };
     } finally {
         if (pdfWindow && !pdfWindow.isDestroyed()) pdfWindow.destroy();
+        try {
+            if (pdfTempFile && fs.existsSync(pdfTempFile)) fs.unlinkSync(pdfTempFile);
+            if (pdfTempDirectory && fs.existsSync(pdfTempDirectory)) fs.rmdirSync(pdfTempDirectory);
+        } catch (cleanupError) {
+            console.warn("Could not remove temporary PDF export files:", cleanupError?.message || cleanupError);
+        }
     }
 });
-
 
 /*
     Save project

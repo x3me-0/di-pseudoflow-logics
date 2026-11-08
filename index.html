@@ -1198,7 +1198,16 @@
         .avatar-choices { display:flex;gap:8px;flex-wrap:wrap;margin-top:5px; }
         .avatar-choice { width:39px;height:39px;border:1px solid #40506a;border-radius:50%;background:#18253a;font-size:21px;cursor:pointer; }
         .avatar-choice.selected { border:2px solid #818cf8;background:#26365a; }
-        .save-as-dialog,.help-dialog { width:min(450px,calc(100% - 36px));border:1px solid #334155;border-radius:14px;background:#111827;color:#e5e7eb;padding:22px;box-shadow:0 22px 60px #0009; }
+        .save-as-dialog,.help-dialog,.export-pdf-dialog { width:min(520px,calc(100% - 36px));border:1px solid #334155;border-radius:14px;background:#111827;color:#e5e7eb;padding:22px;box-shadow:0 22px 60px #0009; }
+        .export-pdf-dialog::backdrop { background:#020617c9; }
+        .export-pdf-dialog h2 { margin:0 0 8px; }
+        .export-pdf-dialog p { color:#94a3b8;font-size:13px;line-height:1.5; }
+        .export-pdf-form { display:grid;gap:14px; }
+        .export-pdf-form label { display:grid;gap:6px;font-weight:700;font-size:13px; }
+        #pdfFlowLayoutRow[hidden] { display:none; }
+        .export-pdf-form select { width:100%;padding:10px;border:1px solid #475569;border-radius:8px;background:#0b1120;color:#e5e7eb;font:inherit; }
+        .export-pdf-actions { display:flex;justify-content:flex-end;gap:8px;margin-top:4px; }
+        .export-pdf-hint { margin:0; }
         .save-as-dialog::backdrop,.help-dialog::backdrop { background:#020617c9; }
         .help-dialog { width:min(790px,calc(100% - 28px));max-height:85vh;overflow:auto; }
         .help-title-row { display:flex;align-items:center;gap:12px;margin-bottom:16px; }
@@ -2223,6 +2232,19 @@
 ========================================================= -->
 
 <dialog id="saveAsDialog" class="save-as-dialog"><form id="saveAsForm"><h2>Save Project As</h2><p>Choose a name for this project copy.</p><label for="saveAsTitle">Project name</label><input id="saveAsTitle" maxlength="100" required><div class="save-as-actions"><button type="button" class="project-action" id="cancelSaveAs">Cancel</button><button class="project-action primary" type="submit">Save Copy</button></div></form></dialog>
+<dialog id="exportPdfDialog" class="export-pdf-dialog">
+  <form id="exportPdfForm" class="export-pdf-form">
+    <div><h2>Export to PDF</h2><p>Choose which parts of this project to include.</p></div>
+    <label for="pdfExportContent">Content
+      <select id="pdfExportContent"><option value="both">Pseudocode and flowchart</option><option value="pseudocode">Pseudocode only</option><option value="flowchart">Flowchart only</option></select>
+    </label>
+    <label id="pdfFlowLayoutRow" for="pdfFlowLayout">Flowchart page layout
+      <select id="pdfFlowLayout"><option value="tile">Multiple landscape pages — readable with overlap</option><option value="fit">Fit the whole chart on one page</option></select>
+    </label>
+    <p id="pdfFlowLayoutHint" class="export-pdf-hint">Tiled pages keep the chart larger and overlap slightly so you can follow connectors between pages. Choose fit-on-one-page if you need a single-sheet overview.</p>
+    <div class="export-pdf-actions"><button type="button" class="project-action" id="cancelPdfExport">Cancel</button><button type="submit" class="project-action primary">Export PDF</button></div>
+  </form>
+</dialog>
 <dialog id="helpDialog" class="help-dialog">
   <div class="help-title-row"><span class="help-title-icon">❔</span><div><h2>Quick controls</h2><p>Visual guide for common actions</p></div></div>
   <div class="help-grid">
@@ -6630,7 +6652,7 @@ function deleteFlowSelection() {
 }
 
 
-function getFlowchartSvgForExport() {
+function getFlowchartSvgForExport(options = {}) {
     const svg = flowchartCanvas.cloneNode(true);
     svg.querySelectorAll(".flow-resize-handle, .connector-anchor-point, .connector-anchor, .connector-anchor-hit, .flow-text-editor-wire").forEach(element => element.remove());
     const viewport = svg.querySelector("#flowchartViewport");
@@ -6639,7 +6661,7 @@ function getFlowchartSvgForExport() {
         bounds = { x: 0, y: 0, width: Math.max(1, flowchartCanvasWrapper.clientWidth), height: Math.max(1, flowchartCanvasWrapper.clientHeight) };
     }
     const padding = 48;
-    const scale = Math.min(1, 2400 / (bounds.width + padding * 2), 1800 / (bounds.height + padding * 2));
+    const scale = options.preserveScale ? 1 : Math.min(1, 2400 / (bounds.width + padding * 2), 1800 / (bounds.height + padding * 2));
     const width = Math.max(1, Math.ceil((bounds.width + padding * 2) * scale));
     const height = Math.max(1, Math.ceil((bounds.height + padding * 2) * scale));
     viewport.setAttribute("transform", `translate(${(padding - bounds.x) * scale} ${(padding - bounds.y) * scale}) scale(${scale})`);
@@ -6697,10 +6719,41 @@ function downloadFlowchartPng() {
 }
 
 document.getElementById("flowExportPngButton").addEventListener("click", downloadFlowchartPng);
-document.getElementById("flowExportPdfButton").addEventListener("click", async () => {
+const exportPdfDialog = document.getElementById("exportPdfDialog");
+const pdfExportContent = document.getElementById("pdfExportContent");
+const pdfFlowLayoutRow = document.getElementById("pdfFlowLayoutRow");
+function syncPdfExportOptions() {
+    const includesFlowchart = pdfExportContent.value !== "pseudocode";
+    pdfFlowLayoutRow.hidden = !includesFlowchart;
+}
+pdfExportContent.addEventListener("change", syncPdfExportOptions);
+document.getElementById("flowExportPdfButton").addEventListener("click", () => {
     if (!window.diPseudoFlow?.exportPdf) { alert("PDF export is not available."); return; }
-    const { text } = getFlowchartSvgForExport();
-    const result = await window.diPseudoFlow.exportPdf(text, projectTitle.value.trim() || "Flowchart");
+    syncPdfExportOptions();
+    exportPdfDialog.showModal();
+});
+document.getElementById("cancelPdfExport").addEventListener("click", () => exportPdfDialog.close());
+exportPdfDialog.addEventListener("cancel", event => { event.preventDefault(); exportPdfDialog.close(); });
+document.getElementById("exportPdfForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    const content = pdfExportContent.value;
+    const includesFlowchart = content !== "pseudocode";
+    const flowchart = includesFlowchart ? getFlowchartSvgForExport({ preserveScale: document.getElementById("pdfFlowLayout").value === "tile" }).text : "";
+    const owner = currentProject.ownerDisplayName || currentProfile?.displayName || "Local User";
+    const username = currentProject.ownerUsername || currentProfile?.username;
+    const studentId = currentProfile && !currentProfile.isGuest ? String(currentProfile.schoolId || "").trim() : "";
+    const identity = studentId ? " (Student ID: " + studentId + ")" : (username ? " (@" + username + ")" : "");
+    const stamp = "Di PseudoFlow Logics • " + (projectTitle.value.trim() || "Untitled Project") + " • By " + owner + identity + " • Work ID " + ensureWorkStamp(currentProject) + " • Exported " + new Date().toLocaleString();
+    const request = {
+        svg: flowchart,
+        pseudocode: content === "flowchart" ? "" : document.getElementById("pseudocode").value,
+        title: projectTitle.value.trim() || "Untitled Project",
+        stamp,
+        content,
+        flowLayout: document.getElementById("pdfFlowLayout").value
+    };
+    exportPdfDialog.close();
+    const result = await window.diPseudoFlow.exportPdf(request);
     if (!result?.success && !result?.canceled) alert(result?.error || "PDF export failed.");
 });
 
